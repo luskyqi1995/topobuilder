@@ -77,7 +77,7 @@ class Form(object):
         #     if x % 2 == inv:
         #         self.sslist[x].struc.invert_direction()
 
-        i = 2
+        i = 1
         self.seq_str.append(("G", "C", "X"))
         self.inits.append(i)
         for x in range(len(self.sslist) - 1):
@@ -87,12 +87,19 @@ class Form(object):
                 self.seq_str.append((xx, self.sslist[x].get_type(), "S"))
             i += len(self.sslist[x].sequence)
             #d = scipy.spatial.distance.euclidean(self.sslist[x].atoms[-1], self.sslist[x + 1].atoms[0])
-            d = scipy.spatial.distance.euclidean(self.sslist[x].atoms[-3], self.sslist[x + 1].atoms[1])
-            d = int(math.ceil(d / 3.))
-            i += d
-            for yy in range(d):
+            #d = [9, 7, 13, 3, 7, 3]
+            #d = [9, 7, 13, 3, 7, 3]
+            d = [0, 0, 0, 0, 0, 0]
+            #d = [3, 7, 3, ]
+            for yy in range(d[x]):
                 self.seq_str.append(("G", "C", "X"))
             self.inits.append(i)
+            # d = scipy.spatial.distance.euclidean(self.sslist[x].atoms[-3], self.sslist[x + 1].atoms[1])
+            # d = int(math.ceil(d / 3.))
+            # i += d
+            # for yy in range(d):
+            #     self.seq_str.append(("G", "C", "X"))
+            # self.inits.append(i)
         if self.sslist[-1].sequence is None:
                 self.sslist[-1].create_stat_sequence()
         for xx in self.sslist[-1].sequence:

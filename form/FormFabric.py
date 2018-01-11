@@ -31,6 +31,9 @@ class FormFabric(object):
         _LINK_DISTANCE  = (np.sqrt(2 * (_DEF_Z_DISTANCE * _DEF_Z_DISTANCE))) + 2.0
         _LINK_DISTANCE  = data["config"]["link_dist"] if "link_dist" in data["config"] else _LINK_DISTANCE
 
+        # NEW: Define your own connectivity inside the json for the sketch!
+        _CONNECTIVITY   = data["config"]["connectivity"] if "connectivity" in data["config"] else None
+
         layers    = []
         shapelsit = []
         for x in range(len(data["layers"])):
@@ -82,20 +85,31 @@ class FormFabric(object):
         if options.shape: sys.exit(1)
 
         print "\tevaluating possible combinations"
-        forms = _create_forms(layers, _LINK_DISTANCE)
-        print "\tforms created:", str(len(forms))
-
-        # EVALUATE AND SAVE FORMS FOR CHECKPOINT
-        data.setdefault("forms", [])
-        okforms = []
-        for _, f in enumerate(forms):
-            f.evaluate()
-            if f.do: okforms.append(f)
-            if f.do or not options.hurry:
+        if _CONNECTIVITY:
+            data.setdefault("forms", [])
+            okforms = []
+            forms = _create_forms_by_specification(layers, _LINK_DISTANCE, _CONNECTIVITY)
+            print "\tforms created:", str(len(forms))
+            for _,f in enumerate(forms):
+                data.setdefault("forms", [])
+                f.not_evaluate()
+                okforms.append(f)
                 data["forms"].append(f.to_json())
-            if _ > 0 and _ % 100 == 0:
-                print "\t\t{0} out of {1} evaluated ({2} ok)".format(_, len(forms), len(okforms))
-        print "\t\t{0} evaluated ({1} ok)".format(len(forms), len(okforms))
+        else:
+            forms = _create_forms(layers, _LINK_DISTANCE)
+            print "\tforms created:", str(len(forms))
+
+            # EVALUATE AND SAVE FORMS FOR CHECKPOINT
+            data.setdefault("forms", [])
+            okforms = []
+            for _, f in enumerate(forms):
+                f.evaluate()
+                if f.do: okforms.append(f)
+                if f.do or not options.hurry:
+                    data["forms"].append(f.to_json())
+                if _ > 0 and _ % 100 == 0:
+                    print "\t\t{0} out of {1} evaluated ({2} ok)".format(_, len(forms), len(okforms))
+            print "\t\t{0} evaluated ({1} ok)".format(len(forms), len(okforms))
 
         # GRAPHIC REPRESENTATIONS
         vs = VisualForms(okforms if options.hurry else forms)
@@ -128,16 +142,81 @@ def _create_forms( layers, distance ):
     #         forms.append(f)
     return forms
 
+def _create_forms_by_specification( layers, distance, connectivity ):
+    """Creates all possible forms from first to last node reading the detailed
+    connectivity in the json file."""
+    # G = []
+    # H = []
+    #
+    # layer_elements = []
+    # connect = []
+    # for i,lyr in enumerate(layers):
+    #     l = map(str, lyr)
+    #     for j,sse in enumerate(l):
+    #         layer_elements.append([i, j])
+    #         insertion_ind = connectivity.index(sse)
+    #         connect.insert(insertion_ind, [i, j])
+    # #connect_reversed = connect[::-1]
+    #
+    # for i in range(len(connect)):
+    #     lyr1, col1 = connect[i][0], connect[i][1]
+    #     G.append(layers[lyr1][col1])
+    # G_reversed = G[::-1]
+    #
+    # forms = []
+    # fg = FakeForm(copy.deepcopy(G))
+    # fgr = FakeForm(copy.deepcopy(G_reversed))
+    # forms.append(fg)
+    # forms.append(fgr)
+    # print "creating fold with forward fold connectivity {}".format(G)
+    # print "creating fold with backward fold connectivity {}".format(G_reversed)
+    # print "\t\t\t", len(forms), "folds obtained"
+
+    #layer_elements = []
+    connect = {}
+    for i,lyr in enumerate(layers):
+        l = map(str, lyr)
+        for j,sse in enumerate(l):
+            #layer_elements.append([sse, i, j])
+            insertion_ind = connectivity.index(sse)
+            connect[insertion_ind] = [i, j]
+    connect = list(connect.values())
+
+    path = []
+    for i in range(len(connect)):
+         lyr1, col1 = connect[i][0], connect[i][1]
+         path.append(layers[lyr1][col1])
+
+    print "Building connectivity {}".format(path)
+
+    forms = []
+    if len(connectivity)==2:
+        n1 = path[0]
+        n2 = path[-1]
+        forms.extend(_search_paths(G, n1, n2))
+    else:
+        f = FakeForm(copy.deepcopy(path))
+        forms.append(f)
+        path.reverse()
+        f = FakeForm(copy.deepcopy(path))
+        forms.append(f)
+    return forms
+
 def _search_paths(G, n1, n2):
     forms = []
     print "\t\t", n1.desc, "-->", n2.desc
+    #if n1.desc=="A1E" and n2.desc=="B1E":
     for path in nx.all_simple_paths(G, n1, n2):
+        print list(path)
+        break
         if len(path) == nx.number_of_nodes(G):
             f = FakeForm(copy.deepcopy(path))
             forms.append(f)
             path.reverse()
             f = FakeForm(copy.deepcopy(path))
             forms.append(f)
+    else:
+        pass
     print "\t\t\t", len(forms), "folds obtained"
     return forms
 
