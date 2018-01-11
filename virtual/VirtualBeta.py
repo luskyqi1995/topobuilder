@@ -13,6 +13,7 @@ class VirtualBeta(VS):
     # approximately 6, rather than the 7.6 (2 × 3.8) expected from
     # two fully extended trans peptides.
     _ATOMTYPES    = ("N", "CA", "C", "O")#, "H")
+    #_ATOMTYPES    = ("C", "O", "CA", "N")#, "H")
     #_MAX_AA_DIST  = 3.25
     #_ATOM_CA_DIST = {"N": 2.5, "CA": 3.8, "C": 1.43 , "O": 1.55, "H": 2.5}
     #_RADIUS       = {"N": 0.3, "CA": 1.06, "C": 1.082 , "O": 1.082, "H": 0.3}
@@ -22,9 +23,15 @@ class VirtualBeta(VS):
     #_RADIUS       = {"N": 0.211, "CA": 1.06, "C": -0.305 , "O": -0.171, "H": 0.068}
     #_SHIFT        = {"N": 0.391, "CA": 0., "C": -0.525 , "O": -1.738, "H": 1.354}
 
-    _ATOM_CA_DIST = {"N": 2.6, "CA": 3.8, "C": 1.8 , "O": 1.9, "H": 2.5}
-    _RADIUS       = {"N": 0.25, "CA": 1.06, "C": -0.305 , "O": -0.171, "H": 0.068}
-    _SHIFT        = {"N": 0.395, "CA": 0., "C": -0.510 , "O": -1.75, "H": 1.35}
+    # Here the residue object connectivity is wrong
+    #_ATOM_CA_DIST = {"N": 2.6, "CA": 3.8, "C": 1.8 , "O": 1.9, "H": 2.5}
+    #_RADIUS       = {"N": 0.25, "CA": 1.06, "C": -0.305 , "O": -0.171, "H": 0.068}
+    #_SHIFT        = {"N": 0.395, "CA": 0., "C": -0.510 , "O": -1.75, "H": 1.35}
+
+    _ATOM_CA_DIST = {"N": 5.000, "CA": 3.800, "C": 2.600, "O": 2.500} #"H": 2.5}
+    _RADIUS       = {"N": 0.300, "CA": 1.100, "C": 0.300, "O": 0.200} #"H": 0.068}
+    #_SHIFT        = {"N": 0.000, "CA": 0.000, "C": 0.000, "O": 0.000}
+    _SHIFT        = {"N": 0.400, "CA": 0.000, "C": 0.500, "O": 1.900} #"H": 1.35}
 
     #_ATOM_CA_DIST = {"N": 1.996, "CA": 0., "C": 1.185 , "O": 1.395, "H": 1.772}
     #_RADIUS       = {"N": 0.35, "CA": 1.06, "C": -0.25 , "O": -0.16, "H": 0.08}
@@ -61,7 +68,7 @@ class VirtualBeta(VS):
             self.last_orientation *= -1
             #ca_point = np.copy(self.points[x]) + np.array([0. , 0., self.last_orientation])
             #self.atoms.append(ca_point)
-            for atomtype in self._ATOMTYPES:
+            for i,atomtype in enumerate(self._ATOMTYPES):
                 points = np.copy(self.points[x]) + np.array([self._SHIFT[atomtype] * self.last_orientation, self._ATOM_CA_DIST[atomtype] - self._ATOM_CA_DIST["CA"], self._RADIUS[atomtype] * self.last_orientation])
                 self.atomtypes.append(atomtype)
                 self.atoms.append(points)
@@ -74,13 +81,13 @@ if __name__ == '__main__':
     y = VirtualBeta(16, [0., 0., 0.])
 
     y.shift_to_origin()
-    print y.atom_points(2, seq="AAAAAAAAAAAAAAAA")
+    print y.atom_points(1, seq="AAAAAAAAAAAAAAAA")
 
-    y.shift_to_origin()
+    #y.shift_to_origin()
     y.shift(x=4.9, y=0, z=0.)
     print y.atom_points(17, seq="AAAAAAAAAAAAAAAA")
 
-    y.shift_to_origin()
-    y.shift(x=4.9, y=1., z=0.)
-    y.invert_direction()
-    print y.atom_points(31, seq="AAAAAAAAAAAAAAAAA")
+    #y.shift_to_origin()
+    #y.shift(x=4.9, y=1., z=0.)
+    #y.invert_direction()
+    #print y.atom_points(31, seq="AAAAAAAAAAAAAAAAA")
