@@ -4,3 +4,5 @@ networkx
 svgwrite
 transforms3d
 bottle
+marshmallow >= 3.0
+pyyaml
