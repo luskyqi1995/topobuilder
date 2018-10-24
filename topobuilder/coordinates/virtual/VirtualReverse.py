@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 # @Author: bonet
 # @Date:   2016-04-28 15:16:13
-# @Last Modified by:   bonet
-# @Last Modified time: 2016-05-02 18:19:31
+# @Last modified by:   bonet
+# @Last modified time: 23-Oct-2018
 
 import copy
 import numpy as np
 import scipy.spatial
-from VirtualStructure import VirtualStructure as VS
+from .VirtualStructure import VirtualStructure as VS
 from transforms3d.euler import euler2mat
 
 DEFAULT_MODULE = 20

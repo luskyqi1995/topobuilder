@@ -8,3 +8,4 @@
 """
 
 from .case import *
+from .wsetup import *

@@ -5,6 +5,8 @@
 .. affiliation::
     Laboratory of Protein Design and Immunoengineering <lpdi.epfl.ch>
     Bruno Correia <bruno.correia@epfl.ch>
+
+.. func:: build
 """
 # Standard Libraries
 import argparse
@@ -17,6 +19,8 @@ from collections import OrderedDict
 
 # This Library
 from topobuilder.io import read_case, write_case
+from topobuilder.io import setup_build
+from topobuilder.coordinates import GeneralArchitect
 
 __all__ = ['build']
 
@@ -24,35 +28,13 @@ __all__ = ['build']
 def build( case: str, overwrite: bool = False ):
     """
     """
-    # 1. Load case
+    # 1. Load case and make sure it is absolute.
     data = read_case(case, True)
 
-    # 2. Create output working directory
-    wdir = case['description']['name']
-    if os.path.isdir(wdir):
-        if not overwrite:
-            raise IOError('Unable to overwrite output directory {}'.format(wdir))
-        else:
-            shutil.rmtree(wdir)
-    os.mkdir(wdir)
-    write_case(data, os.path.join(wdir, wdir), format)
+    # 2. Create output working directory tree
+    paths = setup_build(data, overwrite)
 
-    # 2.
+    # 3. Generate Sketch
+    arch = GeneralArchitect(data, paths)
+    arch.build_sketch()
 
-
-def cli_build():
-    """
-    """
-    # Parse Arguments
-    parser = argparse.ArgumentParser(
-        description=cli_case_template.__doc__,
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-
-    parser.add_argument('-case', dest='case', action='store',
-                        help='Case file.', required=True)
-    parser.add_argument('-overwrite', dest='overwrite', action='store_true',
-                        default=False, help='Ignore previously existing data. '
-                        'Will delete previously existing work folder.')
-    options = parser.parse_args()
-
-    build(**vars(options))

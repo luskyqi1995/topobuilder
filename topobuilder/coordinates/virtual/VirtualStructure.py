@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: bonet
 # @Date:   2016-04-14 14:08:23
-# @Last Modified by:   bonet
-# @Last Modified time: 2016-05-02 17:48:22
+# @Last modified by:   bonet
+# @Last modified time: 23-Oct-2018
 from collections import Iterable
 import copy
 from random import random
@@ -38,12 +38,15 @@ class VirtualStructure(object):
         self.residues = int(residues)
         self.chain    = chain
         self.centre   = np.array(centre, dtype="float64")
-        self.max_dist = float(self._MAX_AA_DIST * self.residues)
+        self.max_dist = float(self._MAX_AA_DIST * (self.residues - 1))
         self.edges    = [np.copy(self.centre) + np.array([0, self.max_dist / 2, 0]),
                          np.copy(self.centre) - np.array([0, self.max_dist / 2, 0])]
+        print(self.centre)
+        print(self.edges)
         self.points   = []
         for x in range(self.residues):
             self.points.append(np.copy(self.edges[0]) - np.array([0, self._MAX_AA_DIST * x, 0]) )
+        print(self.points)
         self.atoms    = []
         self.atomtypes = []
         self.ca_atoms = []
@@ -255,38 +258,38 @@ class VirtualStructure(object):
 
 if __name__ == '__main__':
     b = VirtualStructure(15, [0, 0, 0], chain="Y")
-    print (b.axis_points(1))
+    # print (b.axis_points(1))
     x = VirtualStructure(15, [0, 0, 0], chain="X")
     x.tilt_degrees(x_angle = 90)
-    print (x.axis_points(4))
+    # print (x.axis_points(4))
     z = VirtualStructure(15, [0, 0, 0], chain="Z")
     z.tilt_degrees(z_angle = 90)
-    print (z.axis_points(7))
+    # print (z.axis_points(7))
     # AXIS
     p1 = VirtualStructure(15, [0, 0, 0], chain="A")
     p1.tilt_degrees(z_angle=45)
-    print (p1.axis_points(10))
+    # print (p1.axis_points(10))
     p2 = VirtualStructure(15, [0, 0, 0], chain="B")
     p2.tilt_degrees(x_angle=45)
-    print (p2.axis_points(13))
+    # print (p2.axis_points(13))
     p3 = VirtualStructure(15, [0, 0, 0], chain="C")
     p3.tilt_degrees(x_angle=45, z_angle=45)
-    print (p3.axis_points(16))
+    # print (p3.axis_points(16))
     p3 = VirtualStructure(15, [0, 0, 0], chain="D")
     p3.tilt_degrees(x_angle=45, y_angle=90, z_angle=45)
-    print (p3.axis_points(19))
+    # print (p3.axis_points(19))
     # TURN ON CENTER MASS
 
     b.chain = "E"
     b.shift(3., 12., 6.)
-    print (b.axis_points(22))
+    # print (b.axis_points(22))
     x = VirtualStructure(15, [3., 12., 6.], chain="F")
     x.tilt_degrees(x_angle = 90)
-    print (x.axis_points(25))
+    # print (x.axis_points(25))
     z = VirtualStructure(15, [3., 12., 6.], chain="G")
     z.tilt_degrees(z_angle = 90)
     z.shift(x=4.9, y=1., z=0.)
-    print (z.axis_points(28))
+    # print (z.axis_points(28))
 
     y = VirtualStructure(15, [3., 12., 6.], chain="C")
     x = VirtualStructure(15, [3., 12., 6.], chain="C")
@@ -297,11 +300,11 @@ if __name__ == '__main__':
     p.tilt_degrees(x_angle=45, z_angle=45)
     p.tilt_x_degrees(45)
     p.tilt_y_degrees(45)
-    print y.axis_points(19)
-    print x.axis_points(22)
-    print z.axis_points(25)
-    print p.axis_points(28)
+    # print y.axis_points(19)
+    # print x.axis_points(22)
+    # print z.axis_points(25)
+    # print p.axis_points(28)
     t = VirtualStructure(15, [3., 12., 6.], chain="C")
     t.tilt_degrees(x_angle = 45, z_angle = 90)
     t.invert_direction()
-    print t.axis_points(31)
+    # print t.axis_points(31)

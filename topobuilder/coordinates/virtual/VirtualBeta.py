@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # @Author: bonet
 # @Date:   2016-04-15 18:03:15
-# @Last Modified by:   bonet
-# @Last Modified time: 2016-05-02 19:35:09
+# @Last modified by:   bonet
+# @Last modified time: 23-Oct-2018
 
 import numpy as np
-from VirtualStructure import VirtualStructure as VS
+from .VirtualStructure import VirtualStructure as VS
 
 
 class VirtualBeta(VS):
@@ -55,13 +55,13 @@ if __name__ == '__main__':
     y = VirtualBeta(16, [0., 0., 0.])
 
     y.shift_to_origin()
-    print y.atom_points(2, seq="AAAAAAAAAAAAAAAA")
+    # print y.atom_points(2, seq="AAAAAAAAAAAAAAAA")
 
     y.shift_to_origin()
     y.shift(x=4.9, y=0, z=0.)
-    print y.atom_points(17, seq="AAAAAAAAAAAAAAAA")
+    # print y.atom_points(17, seq="AAAAAAAAAAAAAAAA")
 
     y.shift_to_origin()
     y.shift(x=4.9, y=1., z=0.)
     y.invert_direction()
-    print y.atom_points(31, seq="AAAAAAAAAAAAAAAAA")
+    # print y.atom_points(31, seq="AAAAAAAAAAAAAAAAA")

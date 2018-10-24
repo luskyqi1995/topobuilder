@@ -25,7 +25,10 @@ from collections import OrderedDict
 
 # External Libraries
 import yaml
-from yaml import CLoader as Loader, CDumper as Dumper
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 from yaml.representer import SafeRepresenter
 
 from marshmallow import Schema, ValidationError, fields, pprint
@@ -176,7 +179,7 @@ class StructureSchema( Schema ):
     type = fields.String(required=True, default='<type>',
                          validate=Regexp(_ACCEPTED_SSE_PATTERN_, error=_ACCEPTED_SSE_ERROR_),
                          metadata='Type of secondary structure.')
-    length = fields.Number(metadata='Amino acid length of the secondary structure.')
+    length = fields.Integer(metadata='Amino acid length of the secondary structure.')
     coordinates = fields.Nested(CoordinateSchema())
     tilt = fields.Nested(CoordinateSchema())
     reference = fields.String()

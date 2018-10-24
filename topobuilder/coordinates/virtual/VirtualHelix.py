@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # @Author: bonet
 # @Date:   2016-04-14 18:54:19
-# @Last Modified by:   bonet
-# @Last Modified time: 2016-05-02 19:34:27
+# @Last modified by:   bonet
+# @Last modified time: 23-Oct-2018
 
 import numpy as np
-from VirtualStructure import VirtualStructure as VS
+from .VirtualStructure import VirtualStructure as VS
 
 
 class VirtualHelix(object):
@@ -99,23 +99,23 @@ class VirtualHelixPi(VirtualHelixAlpha):
 
 if __name__ == '__main__':
     y = VirtualHelix(20, [5, 5, 5])
-    print y.atom_points(1, seq="AAAAAAAAAAAAAAAAAAAAA")
+    # print y.atom_points(1, seq="AAAAAAAAAAAAAAAAAAAAA")
     y.chain = "C"
     y.shift(x=4.9, y=0, z=0.)
     y.shift_to_origin()
-    print y.atom_points(1, seq="AAAAAAAAAAAAAAAAAAAAA")
+    # print y.atom_points(1, seq="AAAAAAAAAAAAAAAAAAAAA")
 
     y = VirtualHelix(20, [0, 0, 0])
-    print y.guide_points(1)
-    print y.atom_points(1, seq="AAAAAAAAAAAAAAAAAAAAA")
-    print y.atom_points(12, seq="AAAAAAAAAAAAAAAAAAAAA")
+    # print y.guide_points(1)
+    # print y.atom_points(1, seq="AAAAAAAAAAAAAAAAAAAAA")
+    # print y.atom_points(12, seq="AAAAAAAAAAAAAAAAAAAAA")
     y.chain = "B"
     y.tilt_degrees(z_angle = 45)
-    print y.guide_points(1)
-    print y.atom_points(5, seq="AAAAAAAAAAAAAAAAAAAAA")
+    # print y.guide_points(1)
+    # print y.atom_points(5, seq="AAAAAAAAAAAAAAAAAAAAA")
     y.chain = "C"
     y.shift(x = 10)
     y.spin_degrees(angle = 100)
     y.invert_direction()
-    print y.guide_points(1)
-    print y.atom_points(45, seq="AAAAAAAAAAAAAAAAAAAAA")
+    # print y.guide_points(1)
+    # print y.atom_points(45, seq="AAAAAAAAAAAAAAAAAAAAA")

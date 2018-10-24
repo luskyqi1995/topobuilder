@@ -7,4 +7,5 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 
-from .builder import *
+from .parametric import *
+from .architects import *

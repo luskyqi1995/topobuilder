@@ -66,7 +66,7 @@ setup(
         'console_scripts':
             ['topo.case=topobuilder.interface.cli.case:cli_case_template',
              'topo.absolute=topobuilder.interface.cli.case:cli_absolute_case',
-             'topo.builder=topobuilder.actions.cli_build',
+             'topo.builder=topobuilder.interface.cli.actions:cli_build',
              ]
     },
     cmdclass=versioneer.get_cmdclass(),
