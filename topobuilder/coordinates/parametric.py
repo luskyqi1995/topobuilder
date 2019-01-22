@@ -12,6 +12,7 @@
 
 # External Libraries
 import numpy as np
+import pandas as pd
 
 # This Library
 from SBI.structure import PDB, ResidueFrame, Frame3D
@@ -28,13 +29,12 @@ class ParametricStructure( object ):
     def __init__( self, indata ):
         """
         """
-        print('parametric')
         if isinstance(indata, Frame3D):
             self.pdb = indata
             self.desc = None
             self.reverse()
         elif isinstance(indata, dict):
-            self.pdb = PDB()
+            self.pdb = []
             self.desc = indata
             self.build()
 
@@ -48,13 +48,15 @@ class ParametricStructure( object ):
         vector_module = float(self._PERIODE * (self.desc['length'] - 1))
         upper_bound = np.copy(np.array([0., 0., 0.], dtype='float64')) + np.array([0, vector_module / 2, 0])
         points = [np.copy(upper_bound) - np.array([0, self._PERIODE * x, 0]) for x in range(self.desc['length'])]
-        print(points)
 
         # 2. Build. For each point, we build one periode at [0, 0, 0]. Then, we rotate and then shift.
-        sse = []
+        self.pdb = []
         for i, p in enumerate(points):
-            sse.append(ResidueFrame().simple_residue('GLY', self._MONO))
-            sse[-1].translate(p)
+            print('    building residue {}'.format(i + 1))
+            self.pdb.append(ResidueFrame().simple_residue('GLY', self._MONO))
+            self.pdb[-1].rotate_degrees(y=self._ROTATION)
+            self.pdb[-1].translate(p)
+        self.pdb = pd.concat(self.pdb)
 
     def reverse( self ):
         """

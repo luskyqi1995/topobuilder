@@ -55,7 +55,8 @@ setup(
     platforms='UNIX',
     keywords='development',
 
-    install_requires=['numpy', 'scipy', 'networkx', 'svgwrite', 'transforms3d', 'bottle'],
+    install_requires=['numpy', 'scipy', 'networkx', 'svgwrite', 'transforms3d', 'bottle',
+                      'marshmallow', 'pyyaml'],
 
     packages=find_packages(exclude=['docs', 'demo', 'sphinx-docs']),
     include_package_data=True,

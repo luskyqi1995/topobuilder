@@ -11,12 +11,13 @@
 # Standard Libraries
 from collections import OrderedDict
 import os
+import string
 
 # External Libraries
-
+import pandas as pd
 
 # This Library
-from topobuilder.io import CaseSchema
+from topobuilder.case import Case
 from .parametric import ParametricStructure
 from .virtual.VirtualMaker import VirtualMaker
 from ..form.Form import Form
@@ -28,27 +29,69 @@ class GeneralArchitect( object ):
     """
     """
     def __init__( self, case: OrderedDict, paths: dict ):
-        schema = CaseSchema()
-        self.case = schema.cast_absolute(case)
+        self.case = Case(case).cast_absolute()
         self.path = paths
 
     def build_sketch( self ):
         """
         """
+        shapeForm = self.build_structure()
+        with open(self.path['arch_sketch'], "w") as fd:
+            fd.write(shapeForm.to_pdb())
+        return self.path['arch_sketch']
+
+    def build_connectivity( self, subdir ):
+        """
+        """
+        shapeForm = self.build_structure(connectivity=True)
+        outd = self.path['connectivity'].joinpath(subdir)
+        outd.mkdir(parents=True, exist_ok=True)
+        outf = outd.joinpath('sketch.pdb')
+        with open(outf, "w") as fd:
+            fd.write(shapeForm.to_pdb())
+        return outf
+
+    def build_connectivities( self ):
+        """
+        """
+        cases = self.case.apply_topologies()
+        outfls = []
+        for c in cases:
+            subdir = '.'.join(c['topology']['connectivity'][0])
+            newarch = GeneralArchitect(c, self.path)
+            outfls.append(newarch.build_connectivity(subdir))
+        return outfls
+
+    def build_structure( self, connectivity=False ):
+        """
+        """
         sselist = []
-        for layer in self.case['topology']['architecture']:
-            for ss in layer:
-                vs = SSEArchitect(ss, type=ss['type'])
+        for ilayer, layer in enumerate(self.case.data['topology']['architecture']):
+            print('building layer {}'.format(ilayer + 1))
+            for iss, ss in enumerate(layer):
+                print('  building SSE {}'.format(iss + 1))
+                # sselist.append(SSEArchitect(ss, type=ss['type']).pdb)
+                # sselist[-1].write('test{}.pdb'.format(iss), format='pdb')
                 coordinates = [ss['coordinates']['x'], ss['coordinates']['y'], ss['coordinates']['z']]
                 vs = VirtualMaker(ss['length'], coordinates, type=ss['type'])
                 vs.tilt_y_degrees(ss['tilt']['y'])
                 vs.tilt_degrees(ss['tilt']['x'], 0, ss['tilt']['z'])
                 sselist.append(vs)
-        print(sselist)
+
+        if connectivity:
+            mintp = '.'.join([_[:2] for _ in self.case.data['topology']['connectivity'][0]])
+            crval = list(filter((0).__ne__, [mintp.count(cr) for cr in string.ascii_uppercase]))
+            crval.insert(0, 0)
+
+            new_order = []
+            for pid in [_[:2] for _ in mintp.split('.')]:
+                layerv = crval[string.ascii_uppercase.find(pid[0])]
+                new_order.append(layerv + int(pid[1]) - 1)
+            sselist = [sselist[i] for i in new_order]
+
         shapeForm = Form("shapesketch", sselist, None)
         shapeForm.prepare_coords()
-        with open(self.path['arch_sketch'], "w") as fd:
-            fd.write(shapeForm.to_pdb())
+        return shapeForm
 
 
 class SSEArchitect( object ):
@@ -99,3 +142,7 @@ class FlatBetaArchitect( ParametricStructure ):
     """
     """
     _PERIODE = 3.2
+    _MONO = {'N': [1.321, 0.841, -0.711],
+             'CA': [2.300, 0.000, 0.000],
+             'C': [1.576, -1.029, 0.870],
+             'O': [1.911, -2.248, 0.871]}

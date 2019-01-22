@@ -7,4 +7,5 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 
-from .wsetup import *
+from .case import *
+from .utils import *

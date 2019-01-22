@@ -15,7 +15,7 @@ import shutil
 
 
 # This Library
-from topobuilder.io import write_case
+from topobuilder.case import Case
 
 __all__ = ['setup_build']
 
@@ -39,8 +39,10 @@ def setup_build( case: OrderedDict, overwrite: bool = False ) -> dict:
     paths.setdefault('architecture', paths['wdir'].joinpath('architecture'))
     paths['architecture'].mkdir(parents=True, exist_ok=overwrite)
     paths.setdefault('arch_sketch', paths['architecture'].joinpath('sketch.pdb'))
+    paths.setdefault('connectivity', paths['wdir'].joinpath('connectivity'))
+    paths['connectivity'].mkdir(parents=True, exist_ok=overwrite)
 
     paths.setdefault('casefile', paths['wdir'].joinpath(name))
-    write_case(case, str(paths['casefile']), format='yaml')
+    Case(case).write(str(paths['casefile']), format='yaml')
 
     return paths

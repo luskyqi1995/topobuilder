@@ -12,13 +12,15 @@
 import argparse
 import os
 import shutil
+from pathlib import Path
 from collections import OrderedDict
 
 # External Libraries
 
 
 # This Library
-from topobuilder.io import read_case, write_case
+from topobuilder.case import Case
+#from topobuilder.io import read_case, write_case
 from topobuilder.io import setup_build
 from topobuilder.coordinates import GeneralArchitect
 
@@ -28,13 +30,21 @@ __all__ = ['build']
 def build( case: str, overwrite: bool = False ):
     """
     """
+    info = []
     # 1. Load case and make sure it is absolute.
-    data = read_case(case, True)
+    data = Case(Path(case)).cast_absolute()
 
     # 2. Create output working directory tree
     paths = setup_build(data, overwrite)
 
     # 3. Generate Sketch
     arch = GeneralArchitect(data, paths)
-    arch.build_sketch()
+    info.append(arch.build_sketch())
 
+    # 4. Calculate Connectivities
+    # @TODO
+
+    # 5. Build Connectivities
+    info.extend(arch.build_connectivities())
+
+    return info

@@ -2,7 +2,7 @@
 # @Author: bonet
 # @Date:   2016-04-14 14:08:23
 # @Last modified by:   bonet
-# @Last modified time: 23-Oct-2018
+# @Last modified time: 17-Dec-2018
 from collections import Iterable
 import copy
 from random import random
@@ -41,12 +41,12 @@ class VirtualStructure(object):
         self.max_dist = float(self._MAX_AA_DIST * (self.residues - 1))
         self.edges    = [np.copy(self.centre) + np.array([0, self.max_dist / 2, 0]),
                          np.copy(self.centre) - np.array([0, self.max_dist / 2, 0])]
-        print(self.centre)
-        print(self.edges)
+        # print(self.centre)
+        # print(self.edges)
         self.points   = []
         for x in range(self.residues):
             self.points.append(np.copy(self.edges[0]) - np.array([0, self._MAX_AA_DIST * x, 0]) )
-        print(self.points)
+        # print(self.points)
         self.atoms    = []
         self.atomtypes = []
         self.ca_atoms = []

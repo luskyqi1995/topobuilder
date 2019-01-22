@@ -10,16 +10,18 @@
 .. func:: cli_absolute_case
 """
 # Standard Libraries
+import os
 import argparse
+from pathlib import Path
 
 # External Libraries
 
 # This Library
-from topobuilder.io import case_template, read_case, write_case
+from topobuilder.case import Case, case_template
 
 
 def cli_case_template():
-    """Generate a :class:`.CaseSchema`.
+    """Generate a :class:`.Case`.
     """
     # Parse Arguments
     parser = argparse.ArgumentParser(
@@ -41,11 +43,12 @@ def cli_case_template():
 
     options = parser.parse_args()
 
-    case_template(**vars(options))
+    _, outfile = case_template(**vars(options))
+    print('New case file created at: {}'.format(os.path.abspath(outfile)))
 
 
 def cli_absolute_case():
-    """Transform a relative :class:`.CaseSchema` to absolute.
+    """Transform a relative :class:`.Case` to absolute.
     """
     # Parse Arguments
     parser = argparse.ArgumentParser(
@@ -54,6 +57,8 @@ def cli_absolute_case():
 
     parser.add_argument('-case', dest='case', action='store',
                         help='Relative case file.', required=True)
+    parser.add_argument('-corrections', dest='crrections', action='store',
+                        help='Correction file for the case.', default=None)
     options = parser.parse_args()
 
     # Process naming system
@@ -63,5 +68,5 @@ def cli_absolute_case():
     prefix = '.'.join(prefix)
 
     # Read, transform and write
-    data = read_case(options.case, True)
-    write_case(data, prefix, format)
+    case = Case(Path(options.case)).cast_absolute()
+    case.write(prefix, format)

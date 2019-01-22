@@ -5,12 +5,6 @@
 .. affiliation::
     Laboratory of Protein Design and Immunoengineering <lpdi.epfl.ch>
     Bruno Correia <bruno.correia@epfl.ch>
-
-.. class:: CaseSchema
-.. class:: CaseError
-.. func:: read_case
-.. func:: write_case
-.. func:: case_template
 """
 # Standard Libraries
 import getpass
@@ -20,7 +14,7 @@ import argparse
 import json
 import string
 import copy
-from typing import Optional
+from typing import Optional, Tuple, Dict, List
 from collections import OrderedDict
 
 # External Libraries
@@ -38,14 +32,14 @@ from marshmallow.validate import Regexp
 # This Library
 from ..__init__ import __version__ as __version__
 
-__all__ = ['CaseSchema', 'CaseError', 'read_case', 'write_case', 'case_template']
+__all__ = ['CaseSchema', 'CaseError']
 
 # Default Values
 _DEFAULT_HELIX_LENGTH_        = 13
 _DEFAULT_BETA_LENGTH_         = 7
 _DEFAULT_HELIX_DISTANCE_      = 10
 _DEFAULT_HELIX_BETA_DISTANCE  = 11
-_DEFAULT_BETA_PAIR_DISTANCE_  = 5
+_DEFAULT_BETA_PAIR_DISTANCE_  = 4.85
 _DEFAULT_BETA_STACK_DISTANCE_ = 8
 _DEFAULT_LOOP_DISTANCE_       = 18.97
 
@@ -131,6 +125,10 @@ class ConfigurationSchema( Schema ):
                              metadata='Default parameters.')
     relative = fields.Boolean(default=True,
                               metadata='Relative vs. absolute coordinates.')
+    reoriented = fields.Boolean(default=False,
+                                metadata='Has connectivity directions been applied?')
+    protocols = fields.List(fields.String, default=[],
+                            metadata='Pipeline of protocols to run.')
     comments = fields.List(fields.String, default=[__version__],
                            metadata='Relative vs. absolute coordinates.')
 
@@ -166,7 +164,8 @@ class CoordinateSchema( Schema ):
         """Fill non-specified coordinates with the provided value
         """
         for i in ['x', 'y', 'z']:
-            data[i] += value[i]
+            if i in value:
+                data[i] += value[i]
         return data
 
 
@@ -182,6 +181,7 @@ class StructureSchema( Schema ):
     length = fields.Integer(metadata='Amino acid length of the secondary structure.')
     coordinates = fields.Nested(CoordinateSchema())
     tilt = fields.Nested(CoordinateSchema())
+    layer_tilt = fields.Nested(CoordinateSchema())
     reference = fields.String()
 
     def get_position( self, data: dict ) -> dict:
@@ -228,6 +228,12 @@ class StructureSchema( Schema ):
         else:
             data['tilt'] = cschema.fill_missing(data['tilt'], 0)
 
+        # layer_tilt
+        if 'layer_tilt' not in data:
+            data.setdefault('layer_tilt', {'x': 0, 'y': 0, 'z': 0})
+        else:
+            data['layer_tilt'] = cschema.fill_missing(data['layer_tilt'], 0)
+
         return data
 
 
@@ -267,247 +273,66 @@ class CaseSchema( Schema ):
                 for sse in layer:
                     schema.check_completeness(sse)
 
-    def cast_absolute( self, data: dict ) -> dict:
-        """Transform a ``relative`` :class:`.CaseSchema` into an ``absolute`` one.
-        """
-        if not data['configuration']['relative']:
-            return data
-
-        data['configuration']['relative'] = False
-        sschema = StructureSchema()
-        dschema = DistanceSchema()
-
-        position = {'x': 0, 'y': 0, 'z': 0}
-        defaults = data['configuration']['defaults']
-        for i, layer in enumerate(data['topology']['architecture']):
-            position['x'] = 0
-            back = None if i == 0 else data['topology']['architecture'][i - 1][0]['type']
-            here = layer[0]['type']
-            position['z'] += dschema.get_z_distance(defaults['distance'], back, here)
-            for j, sse in enumerate(layer):
-                left = None if j == 0 else layer[j - 1]['type']
-                here = sse['type']
-                position['x'] += dschema.get_x_distance(defaults['distance'], left, here)
-                data['topology']['architecture'][i][j] = sschema.cast_absolute(sse, position, defaults)
-                position = sschema.get_position(data['topology']['architecture'][i][j])
-
-        return data
-
 
 # Error
 class CaseError( ValidationError ):
     """Errors referring to :class:`.CaseSchema` processing"""
 
 
-# Functions
-def read_case( filename: str, make_absolute: bool = False ) -> OrderedDict:
-    """Read a :class:`.CaseSchema` file into a :class:`OrderedDict`
-
-    :param str filename: Name of the :class:`.CaseSchema` file.
-    :param bool make_absolute: If :data:`True`, coordinates and shifts are
-        defined as absolute positions.
-
-    :return: :class:`OrderedDict`
-
-    :raises:
-        :IOError: If ``filename`` is not found.
-    """
-    result = None
-    schema = CaseSchema()
-
-    if not os.path.isfile(filename):
-        raise IOError('Unable to find case file {}'.format(filename))
-
-    try:
-        result = json.loads("".join([x.strip() for x in open(filename).readlines()]))
-    except json.JSONDecodeError as je:
-        result = yaml.load(open(filename))
-
-    result = schema.dump(result)
-    if make_absolute:
-        result = schema.cast_absolute(result)
-    return schema.load(result)
-
-
-def write_case( data: OrderedDict, prefix: Optional[str] = None, format: str = 'yaml' ):
-    """Write :class:`.CaseSchema` into a file.
-
-    :param OrderedDict data: :class:`.CaseSchema` content.
-    :param str prefix: If provided, used as prefix for the filename. Otherwise the
-        :class:`.CaseSchema` ``configuration.name`` is used.
-    :param str format: Output format.
-
-    :raises:
-        :ValueError: If format is not ``yaml`` or ``json``.
-
-    """
-    if format not in ['yaml', 'json']:
-        raise ValueError('Available formats are yaml or json.')
-
-    prefix = data['configuration']['name'] if prefix is None else prefix
-
-    if format == 'yaml':
-        # This is required for YAML to properly print the Schema as an OrderedDict
-        # Adapted from https://gist.github.com/oglops/c70fb69eef42d40bed06 to py3
-        _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
-
-        def dict_representer(dumper, data):
-            return dumper.represent_dict(data.items())
-
-        def dict_constructor(loader, node):
-            return OrderedDict(loader.construct_pairs(node))
-
-        Dumper.add_representer(OrderedDict, dict_representer)
-        Loader.add_constructor(_mapping_tag, dict_constructor)
-        Dumper.add_representer(str, SafeRepresenter.represent_str)
-
-        with open('{}.yml'.format(prefix), 'w') as fd:
-            yaml.dump(data, fd, Dumper=Dumper, default_flow_style=False)
-    else:
-        with open('{}.json'.format(prefix), 'w') as fd:
-            json.dump(data, fd, indent=2)
-
-
-def describe_architecture( architecture: str ) -> OrderedDict:
-    """Transform an architecture definition into a :class:`.TopologySchema`.
-
-    According to [CATH](http://www.cathdb.info/wiki/doku/?id=faq#what_is_cath), an
-    architecture defines *structures that are classified according to their overall
-    shape as determined by the orientations of the secondary structures in 3D space
-    but ignores the connectivity between them*.
-
-    In the **TopoSuite**, we have adopted and adapted this definition to a layer-based
-    [FORM]() definition of secondary structure placements.
-
-    The format of an architecture string definition is as follows (lower or upper case
-    are both accepted)::
-
-        2h.4e.2h
-
-    This defines a 3-layer topology (each layer separated by points) formed by a first
-    layer with 2 helices, a mid-layer with 4 beta strands and a final layer with 2 helices.
-
-    Normally, the length of each secondary structure will be determined by the appropriate
-    default setting. If length want to be defined, this can be done by providing length data
-    to each layer using `:`::
-
-        2h:13:10.4e:5:5:5:5.2h:7:13
-
-    Notice that, if secondary structure residue length is provided, **it has to be provided
-    for all secondary structures**. Unexpected behaviour might arise from doing otherwise.
+def case_corrections( case: OrderedDict, corrections: Dict) -> OrderedDict:
+    """ Add positional corrections to a :class:`.CaseSchema`.
 
     .. note::
-        All architecture string definitions can be processed by the **TopoSuite**, but not
-        all constructs generated by the **TopoSuite** can be minimized into an architecture
-        string definition.
+        This function requires a :class:`.CaseSchema` for which a ``topology.architecture``
+        has already been defined.
 
-    :param str architecture: Architecture string definition.
+    :param case: Current :class:`.CaseSchema` to modify.
+    :type case: :class:`OrderedDict`
+    :param dict corrections: Corrections to apply to the SSE, defined by SSE id.
 
-    :return: :class:`OrderedDict` definition of the :class:`.TopologySchema`.
-
-    :raises:
-        :CaseError: If the string cannot be properly parsed.
-
-    .. seealso::
-        :func:`.describe_topology`
-    """
-    expression = re.compile('^(\d+)([EH])$')
-    architecture = architecture.upper()
-    result = {'architecture': []}
-
-    for layer in architecture.split('.'):
-        layer = layer.split(':')
-        m = re.match(expression, layer[0])
-        if not m:
-            raise CaseError('Architecture format not recognized.')
-        result['architecture'].append([])
-        for i in range(int(m.group(1))):
-            name = '{0}{1}{2}'.format(string.ascii_uppercase[len(result['architecture']) - 1],
-                                      i + 1, m.group(2))
-            result['architecture'][-1].append({'type': m.group(2), 'id': name})
-            if len(layer) > 1:
-                try:
-                    result['architecture'][-1][-1].setdefault('length', int(layer[i + 1]))
-                except Exception as e:
-                    print(e)
-
-    schema = TopologySchema()
-    return schema.dump(result)
-
-
-def describe_topology( topology: str ) -> OrderedDict:
-    """Transform a topology definition into a :class:`.TopologySchema`.
-
-    According to [CATH](http://www.cathdb.info/wiki/doku/?id=faq#what_is_cath), a
-    topology defines *structures are grouped into fold groups at this level depending
-    on both the overall shape and connectivity of the secondary structures*.
-
-    In the **TopoSuite**, a topology string defines the connectivity of the secondary
-    structures and, by using the [FORM]() systematic naming system (a ``row==letters``,
-    ``columns==numbers`` grid system), it also defines their position. As such, a definition
-    such as this::
-
-        B2E.C1H.B1E.A1H.B3E.A2H.B4E.C2H
-
-    would represent a 3-layered topology (layers A, B and C) with two structures in the first
-    and third layers and 4 in the middle one.
-
-    By default, residue length of each secondary structure is defined by the default configuration,
-    but it can be set up **on an individual basis** by providing the length after the secondary
-    structure type::
-
-        B2E5.C1H12.B1E4.A1H16.B3E5.A2H13.B4E5.C2H13
-
-    :param str topology: Topology string definition.
-
-    :return: :class:`OrderedDict` definition of the :class:`.TopologySchema`.
+    :return: :class:`OrderedDict` - Corrected :class:`.CaseSchema`.
 
     :raises:
-        :CaseError: If the string cannot be properly parsed.
-
-    .. seealso::
-        :func:`.describe_architecture`
+        :CaseError: If ``topology.architecture`` has not been defined.
     """
-    expression = re.compile('^([A-Z])(\d+)([EH])(\d*)$')
-    topology = topology.upper()
-    tp = {}
-    result = {'architecture': [], 'connectivity': [[]]}
-    for sse in topology.split('.'):
-        m = re.match(expression, sse)
-        if not m:
-            raise CaseError('Topology format not recognized.')
-        sse_id = '{0}{1}{2}'.format(m.group(1), m.group(2), m.group(3))
-        result['connectivity'][0].append(sse_id)
-        tp.setdefault(string.ascii_uppercase.find(m.group(1)) + 1,
-                      {}).setdefault(int(m.group(2)), (m.group(3), sse_id, m.group(4)))
+    if 'topology' not in case or 'architecture' not in case['topology']:
+        raise CaseError('Unable to apply corrections to non-existing fields.')
 
-    if list(sorted(tp.keys())) != list(range(min(tp.keys()), max(tp.keys()) + 1)):
-        raise CaseError('Topology format skips layers.')
-    for k1 in sorted(tp.keys()):
-        result['architecture'].append([])
-        if list(sorted(tp[k1].keys())) != list(range(min(tp[k1].keys()), max(tp[k1].keys()) + 1)):
-            raise CaseError('Topology format skips positions in layer {}.'.format(k1))
-        for k2 in sorted(tp[k1].keys()):
-            scaffold = {'type': tp[k1][k2][0], 'id': tp[k1][k2][1]}
-            if tp[k1][k2][2] != '':
-                scaffold.setdefault('length', tp[k1][k2][2])
-            result['architecture'][-1].append(scaffold)
+    schema = CaseSchema()
+    case = copy.deepcopy(case)
 
-    schema = TopologySchema()
-    return schema.dump(result)
+    for j, layer in enumerate(case['topology']['architecture']):
+        for i, sse in enumerate(layer):
+            if sse['id'] in corrections:
+                for c in corrections[sse['id']]:
+                    if not isinstance(corrections[sse['id']][c], (dict, OrderedDict)):
+                        case['topology']['architecture'][j][i].setdefault(c, None)
+                        case['topology']['architecture'][j][i][c] = corrections[sse['id']][c]
+                    else:
+                        case['topology']['architecture'][j][i].setdefault(c, {})
+                        for k in corrections[sse['id']][c]:
+                            case['topology']['architecture'][j][i][c].setdefault(k, None)
+                            case['topology']['architecture'][j][i][c][k] = corrections[sse['id']][c][k]
+    return schema.load(schema.dump(case))
+
 
 
 def case_template( name: str, architecture: Optional[str] = None, topology: Optional[str] = None,
-                   format: str = 'yaml' ) -> OrderedDict:
+                   corrections: Optional[Dict] = None, format: str = 'yaml', make_absolute: bool = False
+                   ) -> Tuple[OrderedDict, str]:
     """Generate a :class:`.CaseSchema`.
 
     :param str name: Identifier of the case.
     :param str architecture: Definition of unconnected, unordered secondary structure.
     :param str topology: Definition of connected,ordered secondary structure. If provided, it will
         overwrite ``architecture``.
+    :param dict corrections: Corrections to apply to the default case, identified by the SSE id.
     :param str format: Format of the output file (``yaml`` or ``json``).
+    :param bool make_absolute: If :data:`True`, coordinates and shifts are
+        defined as absolute positions.
 
-    :return: :class:`OrderedDict` definition of the :class:`.CaseSchema`.
+    :return: :class:`OrderedDict` definition of the :class:`.CaseSchema` and
+        :class:`str` generated filename.
     """
 
     # Create the case
@@ -525,7 +350,13 @@ def case_template( name: str, architecture: Optional[str] = None, topology: Opti
     result = schema.dump(case)
     result = schema.load(result)
 
-    # Output
-    write_case(result, name, format)
+    if corrections is not None:
+        result = case_corrections(result, corrections)
 
-    return result
+    if make_absolute:
+        result = schema.cast_absolute(result)
+
+    # Output
+    outfile = write_case(result, name, format)
+
+    return result, outfile
