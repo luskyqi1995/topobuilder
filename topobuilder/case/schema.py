@@ -9,24 +9,11 @@
 # Standard Libraries
 import getpass
 import re
-import os
-import argparse
-import json
-import string
 import copy
-from typing import Optional, Tuple, Dict, List
 from collections import OrderedDict
 
 # External Libraries
-import yaml
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-from yaml.representer import SafeRepresenter
-
-from marshmallow import Schema, ValidationError, fields, pprint
-from marshmallow import (pre_load, validates_schema, post_load)
+from marshmallow import Schema, ValidationError, fields, validates_schema
 from marshmallow.validate import Regexp
 
 # This Library
@@ -43,12 +30,12 @@ _DEFAULT_BETA_PAIR_DISTANCE_  = 4.85
 _DEFAULT_BETA_STACK_DISTANCE_ = 8
 _DEFAULT_LOOP_DISTANCE_       = 18.97
 
-_ACCEPTED_SSE_TYPES_          = '^[HE]$|^S[2-9]\d*$'
+_ACCEPTED_SSE_TYPES_          = r'^[HE]$|^S[2-9]\d*$'
 _ACCEPTED_SSE_PATTERN_        = re.compile(_ACCEPTED_SSE_TYPES_)
 _ACCEPTED_SSE_ERROR_          = "Structure type should meet " \
                                 "the pattern: '{}'".format(_ACCEPTED_SSE_TYPES_)
 
-_ACCEPTED_SSE_ID_             = '^\w\d+[HE]$'
+_ACCEPTED_SSE_ID_             = r'^\w\d+[HE]$'
 _ACCEPTED_SSE_ID_PATTERN_     = re.compile(_ACCEPTED_SSE_ID_)
 _ACCEPTED_SSE_ID_ERROR_       = "Secondary structure id should meet " \
                                 "the pattern: '{}'".format(_ACCEPTED_SSE_ID_)
@@ -127,8 +114,7 @@ class ConfigurationSchema( Schema ):
                               metadata='Relative vs. absolute coordinates.')
     reoriented = fields.Boolean(default=False,
                                 metadata='Has connectivity directions been applied?')
-    protocols = fields.List(fields.String, default=[],
-                            metadata='Pipeline of protocols to run.')
+    protocols = fields.List(fields.Dict, default={}, metadata='Pipeline of protocols to run.')
     comments = fields.List(fields.String, default=[__version__],
                            metadata='Relative vs. absolute coordinates.')
 
@@ -182,7 +168,7 @@ class StructureSchema( Schema ):
     coordinates = fields.Nested(CoordinateSchema())
     tilt = fields.Nested(CoordinateSchema())
     layer_tilt = fields.Nested(CoordinateSchema())
-    reference = fields.String()
+    metadata = fields.Dict(metadata='SSE-specific content can be added here by the different plugins.')
 
     def get_position( self, data: dict ) -> dict:
         """Shortcut to the x, y, z coordinates of the :class:`.StructureSchema`.
@@ -234,6 +220,9 @@ class StructureSchema( Schema ):
         else:
             data['layer_tilt'] = cschema.fill_missing(data['layer_tilt'], 0)
 
+        # metadata
+        data.setdefault('metadata', {})
+
         return data
 
 
@@ -260,6 +249,7 @@ class CaseSchema( Schema ):
     topology = fields.Nested(TopologySchema(), required=True, default=TopologySchema().dump({}),
                              error_messages={'required': 'A topological definition is required'},
                              metadata='Topology Definition.')
+    metadata = fields.Dict(metadata='Content can be added here by the different plugins.')
 
     @validates_schema
     def validates_absolute( self, data: dict ):
@@ -277,86 +267,3 @@ class CaseSchema( Schema ):
 # Error
 class CaseError( ValidationError ):
     """Errors referring to :class:`.CaseSchema` processing"""
-
-
-def case_corrections( case: OrderedDict, corrections: Dict) -> OrderedDict:
-    """ Add positional corrections to a :class:`.CaseSchema`.
-
-    .. note::
-        This function requires a :class:`.CaseSchema` for which a ``topology.architecture``
-        has already been defined.
-
-    :param case: Current :class:`.CaseSchema` to modify.
-    :type case: :class:`OrderedDict`
-    :param dict corrections: Corrections to apply to the SSE, defined by SSE id.
-
-    :return: :class:`OrderedDict` - Corrected :class:`.CaseSchema`.
-
-    :raises:
-        :CaseError: If ``topology.architecture`` has not been defined.
-    """
-    if 'topology' not in case or 'architecture' not in case['topology']:
-        raise CaseError('Unable to apply corrections to non-existing fields.')
-
-    schema = CaseSchema()
-    case = copy.deepcopy(case)
-
-    for j, layer in enumerate(case['topology']['architecture']):
-        for i, sse in enumerate(layer):
-            if sse['id'] in corrections:
-                for c in corrections[sse['id']]:
-                    if not isinstance(corrections[sse['id']][c], (dict, OrderedDict)):
-                        case['topology']['architecture'][j][i].setdefault(c, None)
-                        case['topology']['architecture'][j][i][c] = corrections[sse['id']][c]
-                    else:
-                        case['topology']['architecture'][j][i].setdefault(c, {})
-                        for k in corrections[sse['id']][c]:
-                            case['topology']['architecture'][j][i][c].setdefault(k, None)
-                            case['topology']['architecture'][j][i][c][k] = corrections[sse['id']][c][k]
-    return schema.load(schema.dump(case))
-
-
-
-def case_template( name: str, architecture: Optional[str] = None, topology: Optional[str] = None,
-                   corrections: Optional[Dict] = None, format: str = 'yaml', make_absolute: bool = False
-                   ) -> Tuple[OrderedDict, str]:
-    """Generate a :class:`.CaseSchema`.
-
-    :param str name: Identifier of the case.
-    :param str architecture: Definition of unconnected, unordered secondary structure.
-    :param str topology: Definition of connected,ordered secondary structure. If provided, it will
-        overwrite ``architecture``.
-    :param dict corrections: Corrections to apply to the default case, identified by the SSE id.
-    :param str format: Format of the output file (``yaml`` or ``json``).
-    :param bool make_absolute: If :data:`True`, coordinates and shifts are
-        defined as absolute positions.
-
-    :return: :class:`OrderedDict` definition of the :class:`.CaseSchema` and
-        :class:`str` generated filename.
-    """
-
-    # Create the case
-    case = {'configuration': {'name': name}}
-    schema = CaseSchema()
-
-    # Architecture-defined case
-    if architecture and not topology:
-        case.setdefault('topology', describe_architecture(architecture))
-
-    # Topology-defined case (architecture + connectivity)
-    if topology and not architecture:
-        case.setdefault('topology', describe_topology(topology))
-
-    result = schema.dump(case)
-    result = schema.load(result)
-
-    if corrections is not None:
-        result = case_corrections(result, corrections)
-
-    if make_absolute:
-        result = schema.cast_absolute(result)
-
-    # Output
-    outfile = write_case(result, name, format)
-
-    return result, outfile

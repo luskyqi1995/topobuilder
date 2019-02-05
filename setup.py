@@ -68,6 +68,7 @@ setup(
             ['topo.case=topobuilder.interface.cli.case:cli_case_template',
              'topo.absolute=topobuilder.interface.cli.case:cli_absolute_case',
              'topo.builder=topobuilder.interface.cli.actions:cli_build',
+             'topo.protocol=topobuilder.interface.cli.actions:cli_protocol',
              ]
     },
     cmdclass=versioneer.get_cmdclass(),

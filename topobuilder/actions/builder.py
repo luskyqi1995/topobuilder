@@ -14,25 +14,28 @@ import os
 import shutil
 from pathlib import Path
 from collections import OrderedDict
+from typing import Optional, Dict, Union
 
 # External Libraries
 
 
 # This Library
 from topobuilder.case import Case
-#from topobuilder.io import read_case, write_case
 from topobuilder.io import setup_build
 from topobuilder.coordinates import GeneralArchitect
 
 __all__ = ['build']
 
 
-def build( case: str, overwrite: bool = False ):
+def build( case: Union[str, Path, Dict],
+           overwrite: Optional[bool] = False ):
     """
     """
     info = []
     # 1. Load case and make sure it is absolute.
-    data = Case(Path(case)).cast_absolute()
+    if isinstance(case, str):
+        case = Path(case)
+    data = Case(case).cast_absolute()
 
     # 2. Create output working directory tree
     paths = setup_build(data, overwrite)

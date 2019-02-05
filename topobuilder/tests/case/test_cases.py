@@ -7,14 +7,19 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
+import os
 from pathlib import Path
 
 # External Libraries
 import pytest
 from marshmallow import ValidationError
+import matplotlib as mpl
+if os.environ.get('DISPLAY', '') == '':
+    mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 # This Library
-from topobuilder.case import Case
+from topobuilder.case import Case, plot_case_sketch
 
 
 class TestCases( object ):
@@ -49,6 +54,8 @@ class TestCases( object ):
         c.write(self.datadir)
         c.write(self.datadir, format='json')
 
+    @pytest.mark.mpl_image_compare(baseline_dir=os.path.join('..', 'baseline_images'),
+                                   filename='architecture.png')
     def test_architecture( self ):
         c = Case('test_architecture')
         c = c.add_architecture('5E.2H')
@@ -69,7 +76,17 @@ class TestCases( object ):
         assert c.shape_len == ((8, 8, 7, 7, 7), (18, 19))
         assert c.connectivity_count == 0
         assert c.connectivities_str == []
+        fig = plt.figure(figsize=(15, 5))
+        ax1 = plt.subplot2grid((1, 3), (0, 0), fig=fig)
+        plot_case_sketch(c, ax1)
+        ax2 = plt.subplot2grid((1, 3), (0, 1), fig=fig)
+        plot_case_sketch(c.apply_corrections({'B': {'xalign': 'center'}}), ax2)
+        ax3 = plt.subplot2grid((1, 3), (0, 2), fig=fig)
+        plot_case_sketch(c.apply_corrections({'B': {'xalign': 'right'}}), ax3)
+        return fig
 
+    @pytest.mark.mpl_image_compare(baseline_dir=os.path.join('..', 'baseline_images'),
+                                   filename='topology.png')
     def test_topology( self ):
         c = Case('test_topology')
         c = c.add_topology('A2E.A1E.B1H.A3E.B2H.A5E.A4E')
@@ -94,14 +111,28 @@ class TestCases( object ):
         c = c.add_architecture('5E:8:8:7:7:7.2H:18:19')
         c = c.add_topology('A2E8.A1E8.B1H18.A3E7.B2H19.A5E7.A4E7')
         c = c.add_topology('A2E8.A1E8.B1H18.A3E7.B2H19.A4E7.A5E7')
+        c = c.add_topology('A1E8.A2E8.B1H18.A3E7.B2H19.A4E7.A5E7')
         assert c.shape == (5, 2)
         assert c.shape_len == ((8, 8, 7, 7, 7), (18, 19))
         assert c.architecture_str == '5E.2H'
-        assert c.connectivity_count == 2
-        assert c.connectivities_str == ('A2E.A1E.B1H.A3E.B2H.A5E.A4E', 'A2E.A1E.B1H.A3E.B2H.A4E.A5E')
+        assert c.connectivity_count == 3
+        assert c.connectivities_str == ('A2E.A1E.B1H.A3E.B2H.A5E.A4E',
+                                        'A2E.A1E.B1H.A3E.B2H.A4E.A5E',
+                                        'A1E.A2E.B1H.A3E.B2H.A4E.A5E')
         cs = c.apply_topologies()
-        assert len(cs) == 2
+        assert len(cs) == 3
         assert cs[0].connectivity_count == 1
         assert cs[0].connectivities_str == ('A2E.A1E.B1H.A3E.B2H.A5E.A4E', )
         assert cs[1].connectivity_count == 1
         assert cs[1].connectivities_str == ('A2E.A1E.B1H.A3E.B2H.A4E.A5E', )
+        assert cs[2].connectivity_count == 1
+        assert cs[2].connectivities_str == ('A1E.A2E.B1H.A3E.B2H.A4E.A5E', )
+
+        fig = plt.figure(figsize=(15, 5))
+        ax1 = plt.subplot2grid((1, 3), (0, 0), fig=fig)
+        plot_case_sketch(cs[0], ax1)
+        ax2 = plt.subplot2grid((1, 3), (0, 1), fig=fig)
+        plot_case_sketch(cs[1], ax2)
+        ax3 = plt.subplot2grid((1, 3), (0, 2), fig=fig)
+        plot_case_sketch(cs[2], ax3)
+        return fig

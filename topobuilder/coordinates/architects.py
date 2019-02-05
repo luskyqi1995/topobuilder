@@ -12,6 +12,8 @@
 from collections import OrderedDict
 import os
 import string
+from pathlib import Path
+from typing import Union, Optional, Dict
 
 # External Libraries
 import pandas as pd
@@ -28,7 +30,9 @@ __all__ = ['GeneralArchitect']
 class GeneralArchitect( object ):
     """
     """
-    def __init__( self, case: OrderedDict, paths: dict ):
+    def __init__( self,
+                  case: Union[str, Dict, Case, Path],
+                  paths: Dict ):
         self.case = Case(case).cast_absolute()
         self.path = paths
 
@@ -142,7 +146,8 @@ class FlatBetaArchitect( ParametricStructure ):
     """
     """
     _PERIODE = 3.2
-    _MONO = {'N': [1.321, 0.841, -0.711],
-             'CA': [2.300, 0.000, 0.000],
-             'C': [1.576, -1.029, 0.870],
-             'O': [1.911, -2.248, 0.871]}
+    _ROTATION = -180
+    _MONO = {'N': [-0.440, -1.200, 0.330],
+             'CA': [0.000, 0.000, 1.210],
+             'C': [-0.550, 1.200, 0.330],
+             'O': [-2.090, 1.300, 0.220]}

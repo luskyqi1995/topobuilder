@@ -37,10 +37,12 @@ def setup_build( case: OrderedDict, overwrite: bool = False ) -> dict:
         shutil.rmtree(paths['wdir'], True)
 
     paths.setdefault('architecture', paths['wdir'].joinpath('architecture'))
-    paths['architecture'].mkdir(parents=True, exist_ok=overwrite)
+    if not paths['architecture'].is_dir():
+        paths['architecture'].mkdir(parents=True, exist_ok=overwrite)
     paths.setdefault('arch_sketch', paths['architecture'].joinpath('sketch.pdb'))
     paths.setdefault('connectivity', paths['wdir'].joinpath('connectivity'))
-    paths['connectivity'].mkdir(parents=True, exist_ok=overwrite)
+    if not paths['connectivity'].is_dir():
+        paths['connectivity'].mkdir(parents=True, exist_ok=overwrite)
 
     paths.setdefault('casefile', paths['wdir'].joinpath(name))
     Case(case).write(str(paths['casefile']), format='yaml')

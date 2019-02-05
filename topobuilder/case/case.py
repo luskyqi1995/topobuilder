@@ -7,10 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import getpass
 import re
-import os
-import argparse
 import json
 import string
 from copy import deepcopy
@@ -25,10 +22,9 @@ try:
 except ImportError:
     from yaml import Dumper
 from yaml.representer import SafeRepresenter
-from marshmallow import ValidationError
 
 # This Library
-from .schema import (CaseSchema, CaseError, TopologySchema,
+from .schema import (CaseSchema, CaseError, TopologySchema, CoordinateSchema,
                      StructureSchema, DistanceSchema)
 
 __all__ = ['Case']
@@ -39,7 +35,7 @@ C = TypeVar('C', bound='Case')
 class Case( object ):
     """
     """
-    def __init__( self, init: Optional[Union[str, dict, Path]]=None ):
+    def __init__( self, init: Optional[Union[str, dict, Path, C]] = None ):
         self.data = OrderedDict()
         self.schema = CaseSchema()
 
@@ -57,10 +53,18 @@ class Case( object ):
                 raise IOError('Unable to manage gzipped file case {}'.format(init.resolve()))
             try:
                 self.data = json.loads("".join([x.strip() for x in open(init).readlines()]))
-            except json.JSONDecodeError as je:
+            except json.JSONDecodeError:
                 self.data = yaml.load(open(init))
 
         self.check()
+
+    @property
+    def name( self ) -> str:
+        """Returns the :class:`.Case` identifier.
+
+        :return: class:`str`
+        """
+        return self['configuration.name']
 
     @property
     def shape( self ) -> Tuple[int]:
@@ -158,6 +162,27 @@ class Case( object ):
         return tuple(result)
 
     @property
+    def directionality_profile( self ) -> str:
+        """Returns a binary-type signature representing the directionality
+        of all secondary structures without taking connectivity into account.
+
+        .. note::
+            Proper values for this function requires the :class:`Case` to be
+            **reoriented**.
+
+        :return: :class:`str`
+        """
+        result = ''
+        if 'architecture' not in self:
+            return result
+
+        c = Case(self).cast_absolute()
+        for layer in c['topology.architecture']:
+            for sse in layer:
+                result += '1' if sse['tilt']['x'] > 90 and sse['tilt']['x'] < 270 else '0'
+        return result
+
+    @property
     def is_absolute( self ) -> bool:
         cr = self['configuration.relative']
         if cr is not None:
@@ -168,13 +193,45 @@ class Case( object ):
     def is_relative( self ) -> bool:
         return not self.is_absolute
 
+    @property
+    def is_reoriented( self ) -> bool:
+        cr = self['configuration.reoriented']
+        if cr is not None:
+            return cr
+        return False
+
+    def get_type_for_layer( self, layer: Union[int, str] ) -> str:
+        layerint = layer_int(layer)
+
+        if layerint > len(self['topology.architecture']):
+            raise IndexError('Requested layeer is bigger than any available.')
+
+        if len(self['topology.architecture'][layerint]) == 0:
+            return 'X'
+
+        return self['topology.architecture'][layerint][0]['type']
+
+    def set_type_for_layer( self, layer: Union[int, str], sse_count: int) -> C:
+        sschema = StructureSchema()
+        sse_type = self.get_type_for_layer(layer)
+        layerint = layer_int(layer)
+        layerstr = layer_str(layer)
+
+        ks = Case(self)
+        sse = []
+        for i in range(sse_count):
+            sse.append(sschema.dump({'id': '{0}{1}{2}'.format(layerstr, i + 1, sse_type),
+                                     'type': sse_type}))
+        ks.data['topology']['architecture'][layerint] = sse
+        return ks
+
     def check( self ) -> C:
         """Evaluate the :class:`.Case` content thourhg the :class:`.CaseSchema`.
         """
         self.data = self.schema.load(self.schema.dump(self.data))
         return self
 
-    def add_architecture( self, architecture: Optional[str]=None ) -> C:
+    def add_architecture( self, architecture: Optional[str] = None ) -> C:
         """Adds an architecture definition to the :class:`.Case`.
 
         According to `CATH <http://www.cathdb.info/wiki/doku/?id=faq#what_is_cath>`_, an
@@ -229,7 +286,7 @@ class Case( object ):
         c.data['topology']['architecture'] = architecture_cast(architecture)['architecture']
         return c.check()
 
-    def add_topology( self, topology: Optional[str]=None ) -> C:
+    def add_topology( self, topology: Optional[str] = None ) -> C:
         """Adds a topology definition to the :class:`.Case`.
 
         According to `CATH <http://www.cathdb.info/wiki/doku/?id=faq#what_is_cath>`_, a
@@ -335,58 +392,43 @@ class Case( object ):
             results[-1].data['configuration']['reoriented'] = True
         return results
 
-    def apply_corrections( self, corrections: Optional[Union[Dict, Path]]=None) -> C:
+    def apply_corrections( self, corrections: Optional[Union[Dict, str, Path]] = None ) -> C:
         """
         """
         if corrections is None:
             return Case(self.data).check()
 
-        elif isinstance(corrections, Path):
+        if isinstance(corrections, str):
+            corrections = Path(corrections)
+
+        if isinstance(corrections, Path):
             if not corrections.is_file():
                 raise IOError('Unable to find corrections file {}'.format(corrections.resolve()))
             if corrections.suffix == '.gz':
                 raise IOError('Unable to manage gzipped file case {}'.format(corrections.resolve()))
             try:
                 crr = json.loads("".join([x.strip() for x in open(corrections).readlines()]))
-            except json.JSONDecodeError as je:
+            except json.JSONDecodeError:
                 crr = yaml.load(open(corrections))
             return Case(self.data).apply_corrections(crr)
 
         # APPLY LAYER CORRECTIONS
-        asciiU = string.ascii_uppercase
-        sizes = self.center_shape
-        maxwidth = max(sizes[l]['width'] for l in sizes)
-        for j, layer in enumerate(self['topology.architecture']):
-            layer_id = asciiU[j]
-            if layer_id in corrections:
-                c = corrections[layer_id]
-                if 'xalign' in c:
-                    diffw = maxwidth - sizes[layer_id]['width']
-                    if diffw != 0 and c['xalign'].lower() != 'left':
-                        sse_id = layer[0]['id']
-                        corrections.setdefault(sse_id, {}).setdefault('coordinates', {}).setdefault('x', 0)
-                        if c['xalign'].lower() == 'right':
-                            corrections[sse_id]['coordinates']['x'] += diffw
-                        elif c['xalign'].lower() == 'center':
-                            corrections[sse_id]['coordinates']['x'] += diffw / 2
+        corrections = layer_corrections(corrections, self)
 
         # APPLY SSE CORRECTIONS
-        case = deepcopy(self.data)
-        for j, layer in enumerate(case['topology']['architecture']):
-            for i, sse in enumerate(layer):
-                if sse['id'] in corrections:
-                    for c in corrections[sse['id']]:
-                        if not isinstance(corrections[sse['id']][c], (dict, OrderedDict)):
-                            case['topology']['architecture'][j][i].setdefault(c, None)
-                            case['topology']['architecture'][j][i][c] = corrections[sse['id']][c]
-                        else:
-                            case['topology']['architecture'][j][i].setdefault(c, {})
-                            for k in corrections[sse['id']][c]:
-                                case['topology']['architecture'][j][i][c].setdefault(k, None)
-                                case['topology']['architecture'][j][i][c][k] = corrections[sse['id']][c][k]
-        return Case(case).check()
+        return sse_corrections(corrections, self)
 
-    def write( self, prefix: Optional[Union[str, Path]]=None, format: str='yaml' ) -> Path:
+    def set_protocol_done( self, protocol_id ):
+        """
+        """
+        if protocol_id == -1:
+            return
+        if self['configuration.protocols'] is None or len(self['configuration.protocols']) < protocol_id:
+            raise IndexError('Trying to access an unspecified protocol.')
+        self.data['configuration']['protocols'][protocol_id].setdefault('status', True)
+        self.data['configuration']['protocols'][protocol_id]['status'] = True
+
+    def write( self, prefix: Optional[Union[str, Path]] = None, format: str = 'yaml' ) -> Path:
         """Write :class:`.Case` into a file.
 
         :param str prefix: If not specified, output file is created in the **current working directory**,
@@ -446,6 +488,74 @@ class Case( object ):
         return self.data == value.data
 
 
+def layer_corrections( corrections: dict, case: Case) -> dict:
+    """
+    """
+    asciiU = string.ascii_uppercase
+    sizes = case.center_shape
+    maxwidth = max(sizes[l]['width'] for l in sizes)
+    for j, layer in enumerate(case['topology.architecture']):
+        layer_id = asciiU[j]
+        if layer_id in corrections:
+            c = corrections[layer_id]
+            if 'xalign' in c:
+                diffw = maxwidth - sizes[layer_id]['width']
+                if diffw != 0 and c['xalign'].lower() != 'left':
+                    sse_id = layer[0]['id']
+                    corrections.setdefault(sse_id, {}).setdefault('coordinates', {}).setdefault('x', 0)
+                    if c['xalign'].lower() == 'right':
+                        corrections[sse_id]['coordinates']['x'] += diffw
+                    elif c['xalign'].lower() == 'center':
+                        corrections[sse_id]['coordinates']['x'] += diffw / 2
+    return corrections
+
+
+def sse_corrections( corrections: dict, case: Case) -> Case:
+    """
+    """
+    cs = CoordinateSchema()
+    case = deepcopy(case.data)
+    for j, layer in enumerate(case['topology']['architecture']):
+        for i, sse in enumerate(layer):
+            if sse['id'] in corrections:
+                for c in corrections[sse['id']]:
+                    if not isinstance(corrections[sse['id']][c], (dict, OrderedDict)):
+                        case['topology']['architecture'][j][i].setdefault(c, None)
+                        case['topology']['architecture'][j][i][c] = corrections[sse['id']][c]
+                    else:  # has to be in ['coordinates', 'tilt', 'layer_tilt']
+                        case['topology']['architecture'][j][i].setdefault(c, {})
+                        ks = cs.fill_missing(case['topology']['architecture'][j][i][c], 0)
+                        case['topology']['architecture'][j][i][c] = cs.append_values(ks, corrections[sse['id']][c])
+
+                        # for k in corrections[sse['id']][c]:
+                        #     case['topology']['architecture'][j][i][c].setdefault(k, None)
+                        #     case['topology']['architecture'][j][i][c][k] = corrections[sse['id']][c][k]
+    return Case(case).check()
+
+
+def layer_cast( layer: Union[int, str] ) -> Union[int, str]:
+    if isinstance(layer, int):
+        return string.ascii_uppercase[layer]
+    elif isinstance(layer, str):
+        return string.ascii_uppercase.find(layer.upper())
+    else:
+        raise ValueError('Layer is defined by integer or string.')
+
+
+def layer_int( layer: Union[str, int] ) -> int:
+    if isinstance(layer, int):
+        return layer
+    else:
+        return layer_cast(layer)
+
+
+def layer_str( layer: Union[str, int] ) -> str:
+    if isinstance(layer, str):
+        return layer.upper()
+    else:
+        return layer_cast(layer)
+
+
 def architecture_cast( architecture: Union[str, List, dict] ) -> Union[dict, str]:
     """
     """
@@ -468,9 +578,9 @@ def architecture_cast( architecture: Union[str, List, dict] ) -> Union[dict, str
                 if len(layer) > 1:
                     try:
                         result['architecture'][-1][-1].setdefault('length', int(layer[i + 1]))
-                    except IndexError as e:
+                    except IndexError:
                         print('Lengths were not provided for all defined secondary structures.')
-                    except ValueError as e:
+                    except ValueError:
                         print('Length values MUST BE integers.')
                     except Exception as e:
                         print(e)
@@ -488,7 +598,7 @@ def architecture_cast( architecture: Union[str, List, dict] ) -> Union[dict, str
     return result
 
 
-def topology_cast( topology: Union[str, dict], count: Optional[int]=0 ) -> Union[dict, str]:
+def topology_cast( topology: Union[str, dict], count: Optional[int] = 0 ) -> Union[dict, str]:
     """
     """
     if isinstance(topology, str):
@@ -526,8 +636,6 @@ def topology_cast( topology: Union[str, dict], count: Optional[int]=0 ) -> Union
 def YAML_Dumper():
     # This is required for YAML to properly print the Schema as an OrderedDict
     # Adapted from https://gist.github.com/oglops/c70fb69eef42d40bed06 to py3
-    _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
-
     def dict_representer(dumper, data):
         return dumper.represent_dict(data.items())
 

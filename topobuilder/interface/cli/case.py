@@ -18,6 +18,7 @@ from pathlib import Path
 
 # This Library
 from topobuilder.case import Case, case_template
+from topobuilder import plugin_source
 
 
 def cli_case_template():
@@ -57,16 +58,20 @@ def cli_absolute_case():
 
     parser.add_argument('-case', dest='case', action='store',
                         help='Relative case file.', required=True)
-    parser.add_argument('-corrections', dest='crrections', action='store',
+    parser.add_argument('-corrections', dest='corrections', action='store', nargs='+',
                         help='Correction file for the case.', default=None)
+    parser.add_argument('-caseout', dest='caseout', action='store',
+                        help='Output filename (optional).', default=None)
     options = parser.parse_args()
 
     # Process naming system
     prefix = options.case.split('.')
     format = 'yaml' if prefix[-1] == 'yml' else 'json'
-    prefix[-1] = 'absolute'
-    prefix = '.'.join(prefix)
+    if options.caseout is None:
+        prefix[-1] = 'absolute'
+        options.caseout = '.'.join(prefix)
 
     # Read, transform and write
-    case = Case(Path(options.case)).cast_absolute()
-    case.write(prefix, format)
+    case = plugin_source.load_plugin('corrector').apply([Case(Path(options.case)), ], -1, options.corrections)[0]
+    case = case.cast_absolute()
+    case.write(options.caseout, format)

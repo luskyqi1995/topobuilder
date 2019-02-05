@@ -52,10 +52,10 @@ class ParametricStructure( object ):
         # 2. Build. For each point, we build one periode at [0, 0, 0]. Then, we rotate and then shift.
         self.pdb = []
         for i, p in enumerate(points):
-            print('    building residue {}'.format(i + 1))
             self.pdb.append(ResidueFrame().simple_residue('GLY', self._MONO))
-            self.pdb[-1].rotate_degrees(y=self._ROTATION)
+            self.pdb[-1].rotate_degrees(y=self._ROTATION * i)
             self.pdb[-1].translate(p)
+            self.pdb[-1].number = i + 1
         self.pdb = pd.concat(self.pdb)
 
     def reverse( self ):

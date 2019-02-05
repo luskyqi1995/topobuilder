@@ -2,7 +2,7 @@
 # @Author: bonet
 # @Date:   2016-04-14 14:08:23
 # @Last modified by:   bonet
-# @Last modified time: 17-Dec-2018
+# @Last modified time: 01-Feb-2019
 from collections import Iterable
 import copy
 from random import random

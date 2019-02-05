@@ -7,21 +7,20 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import os
 from pathlib import Path
 from typing import Optional, Tuple, Dict
 
 # External Libraries
 import matplotlib.pyplot as plt
-from matplotlib.path import Path
+from matplotlib.path import Path as pltPath
 from matplotlib.transforms import Affine2D
 from matplotlib.patches import PathPatch
-from matplotlib.colors import ColorConverter, to_hex
 
 # This Library
 from .case import Case
 
 __all__ = ['case_template', 'plot_case_sketch']
+
 
 def case_template( name: str,
                    architecture: Optional[str] = None,
@@ -67,17 +66,19 @@ def case_template( name: str,
 
 
 def plot_case_sketch( case: Case,
-                      ax: Optional[plt.Axes]=None,
-                      beta_fill: Optional[str]='red',
-                      beta_edge: Optional[str]='black',
-                      alpha_fill: Optional[str]='blue',
-                      alpha_edge: Optional[str]='black'
-                      ) -> Tuple[plt.Figure, plt.Axes]:
+                      ax: Optional[plt.Axes] = None,
+                      connections: Optional[bool] = False,
+                      beta_fill: Optional[str] = 'red',
+                      beta_edge: Optional[str] = 'black',
+                      alpha_fill: Optional[str] = 'blue',
+                      alpha_edge: Optional[str] = 'black',
+                      connection_edge: Optional[str] = 'black'
+                      ):
     """
     """
     def make_triangle(y, x, rot_deg, fcolor, ecolor, scale):
-        unit_triangle = Path.unit_regular_polygon(3)
-        path = Path(unit_triangle.vertices * scale, unit_triangle.codes)
+        unit_triangle = pltPath.unit_regular_polygon(3)
+        path = pltPath(unit_triangle.vertices * scale, unit_triangle.codes)
         trans = Affine2D().translate(x, y).rotate_deg_around(x, y, rot_deg)
         t_path = path.transformed(trans)
         patch = PathPatch(t_path, facecolor=fcolor, edgecolor=ecolor, zorder=2)
@@ -89,8 +90,9 @@ def plot_case_sketch( case: Case,
     ax.set_aspect('equal', adjustable='box')
 
     shp = case.center_shape
-    xmax = max([shp[l]['right'] for l in shp]) + 3
-    xmin = min([shp[l]['left'] for l in shp]) - 3
+    margin = 4
+    xmax = max([shp[l]['right'] for l in shp]) + margin
+    xmin = min([shp[l]['left'] for l in shp]) - margin
     ymax = 0
     ymin = 0
 
@@ -111,7 +113,7 @@ def plot_case_sketch( case: Case,
                                   beta_fill, beta_edge, 2)
                 ax.add_artist(p)
     ax.set_xlim(xmin, xmax)
-    ax.set_ylim(ymax + 4, ymin - 4)
+    ax.set_ylim(ymax + margin, ymin - margin)
     ax.set_xlabel('X')
     ax.set_ylabel('Z')
     ax.grid(zorder=0)
