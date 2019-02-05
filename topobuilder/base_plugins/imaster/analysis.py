@@ -24,7 +24,10 @@ import sympy as sy
 
 # This Library
 import topobuilder.core as TBcore
-import core
+try:
+    from . import core
+except ImportError:
+    import core
 
 
 __all__ = ['geometric_analysis', 'geometric_properties', 'parse_master_file', 'get_steps']
@@ -158,7 +161,7 @@ def download_pdb( pdbdb: SBIdb.PDBLink,
                   pdbid: str,
                   pdbchain: str
                   ) -> Tuple[str, SBIstr.PDBFrame]:
-    filename = pdbdb.store_local_path('{0}_{1}.pdb'.format(pdbid, pdbchain))
+    filename = pdbdb.store_local_path('{0}_{1}.pdb.gz'.format(pdbid, pdbchain))
     if not os.path.isfile(filename):
         if TBcore.get_option('topobuilder', 'verbose'):
             sys.stdout.write('  Downloading PDB {}\n'.format(pdbid))
