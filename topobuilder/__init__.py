@@ -16,7 +16,7 @@ from pathlib import Path
 from pluginbase import PluginBase
 
 # This Library
-from . import core
+from .core import core
 from . import io
 from . import case
 

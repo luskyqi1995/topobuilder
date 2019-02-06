@@ -20,7 +20,7 @@ from string import ascii_uppercase
 from topobuilder.case import Case
 from .analysis import get_steps
 from .slurm import make_slurm_file
-from . import core
+from .core import core
 
 
 __all__ = ['requirements', 'apply']

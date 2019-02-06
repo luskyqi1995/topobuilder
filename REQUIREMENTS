@@ -1,5 +1,6 @@
 numpy
 scipy
+libconfig>=0.9
 networkx
 svgwrite
 transforms3d

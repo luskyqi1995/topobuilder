@@ -11,18 +11,22 @@ import os
 import shutil
 
 # External Libraries
-from libconfig import *
+from libconfig import Config
+core = Config()
 
 # This Library
 
-with ifndef():
+with core.ifndef():
     # Register IO control options
-    register_option('topobuilder', 'verbose', False, 'bool', 'Makes topobuilder chatty.')
+    core.register_option('topobuilder', 'verbose', False, 'bool', 'Makes topobuilder chatty.')
 
-    config_file = get_local_config_file('.topobuilder.cfg')
-    # Either make or read from the file.
+    # There are different levels of configuration files that can be picked.
+    # If any configuration file is set up, the priority goes as follows:
+    #   1) Local config file (in the actual executable directory)
+    #   2) Root of the current working repository (if any)
+    #   3) User's home path
+    config_file = core.get_local_config_file('.topobuilder.cfg')
     if config_file is not None:
-        set_options_from_YAML( config_file )
+        core.set_options_from_YAML( config_file )
 
-for name in user_forbidden:
-    del globals()[name]
+    core.lock_configuration()

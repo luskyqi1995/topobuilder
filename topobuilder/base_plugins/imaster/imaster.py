@@ -14,7 +14,7 @@ from pathlib import Path
 
 # This Library
 from analysis import parse_master_file, geometric_properties
-import core
+from core import core
 
 
 def options():

@@ -25,9 +25,9 @@ import sympy as sy
 # This Library
 import topobuilder.core as TBcore
 try:
-    from . import core
+    from .core import core
 except ImportError:
-    import core
+    from core import core
 
 
 __all__ = ['geometric_analysis', 'geometric_properties', 'parse_master_file', 'get_steps']
