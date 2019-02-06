@@ -50,7 +50,8 @@ def apply( cases: List[Case],
         if outfile.is_dir():
             outfile = outfile.joinpath(".".join([str(os.getppid()), str(prtid), outformat]))
         else:
-            outfile = outfile.stem + '.' + outformat
+            outfile = Path(str(outfile) + '.' + outformat)
+        outfile.parent.mkdir(parents=True, exist_ok=True)
         if ptype == 'sketch2d':
             fig, ax = sketch2d(cases, **kwargs.pop('sketch2d', {}))
         plt.tight_layout()

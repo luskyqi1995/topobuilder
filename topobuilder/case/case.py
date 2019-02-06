@@ -418,15 +418,31 @@ class Case( object ):
         # APPLY SSE CORRECTIONS
         return sse_corrections(corrections, self)
 
-    def set_protocol_done( self, protocol_id ):
-        """
+    def set_protocol_done( self, protocol_id: int ) -> C:
+        """Label a protocol as executed.
+
+        :param int protocol_id: Identifier of the protocol according to its position.
         """
         if protocol_id == -1:
             return
         if self['configuration.protocols'] is None or len(self['configuration.protocols']) < protocol_id:
             raise IndexError('Trying to access an unspecified protocol.')
-        self.data['configuration']['protocols'][protocol_id].setdefault('status', True)
-        self.data['configuration']['protocols'][protocol_id]['status'] = True
+
+        c = Case(self.data)
+        c.data['configuration']['protocols'][protocol_id].setdefault('status', True)
+        c.data['configuration']['protocols'][protocol_id]['status'] = True
+        return c
+
+    def assign_protocols( self, protocols: List[Dict] ) -> C:
+        """Overwrite current protocols in the :class:`.Case` with the provided ones.
+
+        :param protocols: New protocols for the :class:`.Case`
+        """
+        c = Case(self.data)
+        if c['configuration.protocols'] is None:
+            c.data['configuration'].setdefault('protocols', [])
+        c.data['configuration']['protocols'] = protocols
+        return c
 
     def write( self, prefix: Optional[Union[str, Path]] = None, format: str = 'yaml' ) -> Path:
         """Write :class:`.Case` into a file.

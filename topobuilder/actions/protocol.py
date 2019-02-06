@@ -31,7 +31,10 @@ def protocol( case: Union[str, Path, Dict, Case],
     c = Case(case)  # .cast_absolute()
 
     protocols = c['configuration.protocols']
-    if protocols is None and protocol in None:
+    if protocols is not None:
+        if len(protocols) == 1 and not bool(protocols[0]):
+            protocols = None
+    if protocols is None and protocol is None:
         raise AttributeError('There are no protocols to run')
     if protocol is not None and protocols is not None:
         raise AttributeError('Protocols are provided both through file and in the Case. '
@@ -49,9 +52,9 @@ def protocol( case: Union[str, Path, Dict, Case],
             raise ValueError('All protocols require a "name" field')
         if ptcl['name'] not in plugin_source.list_plugins():
             raise ValueError('Requested protocol {} cannot be found.'.format(ptcl['name']))
-        c.data['configuration']['protocols'][i].setdefault('status', False)
+        protocols[i].setdefault('status', False)
 
-    cases = [c, ]
+    cases = [c.assign_protocols(protocols), ]
     for i, ptcl in enumerate(protocols):
         if not ptcl['status']:
             cases = plugin_source.load_plugin(ptcl['name']).apply(cases, prtid=i, **ptcl)
