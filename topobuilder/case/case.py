@@ -16,6 +16,7 @@ from typing import Optional, Tuple, Dict, List, Union, TypeVar
 from collections import OrderedDict
 
 # External Libraries
+import numpy as np
 import yaml
 try:
     from yaml import CDumper as Dumper
@@ -387,7 +388,7 @@ class Case( object ):
             c = Case(self.data)
             c['topology']['connectivity'] = [self['topology.connectivity'][i]]
             for turn in c['topology.connectivity'][0][1::2]:
-                corrections.setdefault(turn, {'tilt': {'y': 180, 'x': 180}})
+                corrections.setdefault(turn, {'tilt': {'x': 180}})
             results.append(c.apply_corrections(corrections))
             results[-1].data['configuration']['reoriented'] = True
         return results
@@ -504,8 +505,14 @@ class Case( object ):
         return self.data == value.data
 
 
-def layer_corrections( corrections: dict, case: Case) -> dict:
-    """
+def layer_corrections( corrections: dict, case: Case) -> Dict:
+    """Transform layer-specified corrections into SSE ones that can be translated
+    into proper :class:`.Case` definitions.
+
+    :param corrections: Existing corrections.
+    :param case: Data to guide the corrections.
+
+    :return: Updated corrections.
     """
     asciiU = string.ascii_uppercase
     sizes = case.center_shape
@@ -516,17 +523,78 @@ def layer_corrections( corrections: dict, case: Case) -> dict:
             c = corrections[layer_id]
             if 'xalign' in c:
                 diffw = maxwidth - sizes[layer_id]['width']
-                if diffw != 0 and c['xalign'].lower() != 'left':
-                    sse_id = layer[0]['id']
-                    corrections.setdefault(sse_id, {}).setdefault('coordinates', {}).setdefault('x', 0)
-                    if c['xalign'].lower() == 'right':
-                        corrections[sse_id]['coordinates']['x'] += diffw
-                    elif c['xalign'].lower() == 'center':
-                        corrections[sse_id]['coordinates']['x'] += diffw / 2
+                corrections = lc_xalign(corrections, layer, c['xalign'].lower(), diffw)
+            if 'yalign' in c:
+                corrections = lc_yalign(corrections, layer, c['yalign'].lower(), case)
+            if 'zcurve' in c:
+                corrections = lc_zcurve(corrections, layer, c['zcurve'])
     return corrections
 
 
-def sse_corrections( corrections: dict, case: Case) -> Case:
+def lc_xalign( corrections: Dict, layer: List[Dict], xalign: str, diffw: float ) -> Dict:
+    """Apply xalign layer corrections.
+
+    :param corrections: Existing corrections to where the new ones will be accomulated.
+    :param layer: List of SSE elements in the layer.
+    :param xalign: Value of the ``xalign`` correction. Can be [``left``, ``center``, ``rigth``]
+    :param diffw: Difference between the wider layer and the current one.
+
+    :return: Updated corrections.
+
+    This layer correction is applied to the first SSE element of the layer, as the position in the x
+    axis of the rest are calculated from this one.
+    """
+    # Do not apply when (A) this is the widest layer or (B) alignment is left (default)
+    if diffw == 0 or xalign == 'left':
+        return corrections
+
+    sse_id = layer[0]['id']
+    corrections.setdefault(sse_id, {}).setdefault('coordinates', {}).setdefault('x', 0)
+    if xalign == 'right':
+        corrections[sse_id]['coordinates']['x'] += diffw
+    elif xalign == 'center':
+        corrections[sse_id]['coordinates']['x'] += diffw / 2
+    return corrections
+
+
+def lc_yalign( corrections: Dict, layer: List[Dict], yalign: str, case: Case ) -> Dict:
+    """Apply yalign layer corrections.
+
+    :param corrections: Existing corrections to where the new ones will be accomulated.
+    :param layer: List of SSE elements in the layer.
+    :param yalign: Value of the ``yalign`` correction. Can be [``top``, ``middle``, ``bottom``]
+    :param case: Full data to get the SSE hights.
+
+    :return: Updated corrections.
+
+    This layer correction is applied to each SSE element of the layer. If the SSE lengths are changed
+    after this correction is applied, the final content might not be as expected.
+    """
+    # Do not apply when (A) there is only one SSE or (B) alignemnt is middle (default)
+    if len(layer) == 1 or yalign == 'middle':
+        return corrections
+
+    tops, bottoms = layer_hights(case, layer)
+    for i, sse in enumerate(layer):
+        topdiff = abs(max(tops) - tops[i])
+        bottomdiff = abs(min(bottoms) - bottoms[i])
+        corrections.setdefault(sse['id'], {}).setdefault('coordinates', {}).setdefault('y', 0)
+        if yalign == 'top':
+            corrections[sse['id']]['coordinates']['y'] += topdiff
+        elif yalign == 'bottom':
+            corrections[sse['id']]['coordinates']['y'] -= bottomdiff
+    return corrections
+
+
+def lc_zcurve( corrections: Dict, layer: List[Dict], zcurve: float ) -> Dict:
+    """
+    """
+    # Do not apply when (A) there is less than SSE or (B) curve is 0 (default)
+    if len(layer) <= 2 or zcurve == 0:
+        return corrections
+
+
+def sse_corrections( corrections: dict, case: Case ) -> Case:
     """
     """
     cs = CoordinateSchema()
@@ -542,10 +610,6 @@ def sse_corrections( corrections: dict, case: Case) -> Case:
                         case['topology']['architecture'][j][i].setdefault(c, {})
                         ks = cs.fill_missing(case['topology']['architecture'][j][i][c], 0)
                         case['topology']['architecture'][j][i][c] = cs.append_values(ks, corrections[sse['id']][c])
-
-                        # for k in corrections[sse['id']][c]:
-                        #     case['topology']['architecture'][j][i][c].setdefault(k, None)
-                        #     case['topology']['architecture'][j][i][c][k] = corrections[sse['id']][c][k]
     return Case(case).check()
 
 
@@ -570,6 +634,26 @@ def layer_str( layer: Union[str, int] ) -> str:
         return layer.upper()
     else:
         return layer_cast(layer)
+
+
+def layer_hights( case: Case, layer: List[Dict] ) -> List[List[float]]:
+    """
+    """
+    from .schema import _DEFAULT_BETA_PERIODE_, _DEFAULT_HELIX_PERIODE_
+
+    sc = CoordinateSchema()
+    tops = []
+    bots = []
+    defaults = case['configuration.defaults.length']
+    for i, sse in enumerate(layer):
+        length = sse['length'] if 'length' in sse else defaults[sse['type']]
+        periode = _DEFAULT_BETA_PERIODE_ if sse['type'] == 'E' else _DEFAULT_HELIX_PERIODE_
+        max_dist = float(periode * (length - 1))
+        centre = sc.fill_missing(sse['coordinates'], 0) if 'coordinates' in sse else sc.fill_missing({}, 0)
+        centre = [centre['x'], centre['y'], centre['z']]
+        tops.append((np.copy(centre) + np.array([0, max_dist / 2, 0]))[1])
+        bots.append((np.copy(centre) - np.array([0, max_dist / 2, 0]))[1])
+    return tops, bots
 
 
 def architecture_cast( architecture: Union[str, List, dict] ) -> Union[dict, str]:

@@ -42,10 +42,10 @@ def apply( cases: List[Case],
         if krr is not None:
             crr.extend(krr)
         kase = Case(case)
-        if TBcore.get_option('topobuilder', 'verbose'):
+        if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('Applying {0} corrections to case {1}\n'.format(len(crr), kase.name))
         for c in crr:
-            if TBcore.get_option('topobuilder', 'verbose'):
+            if TBcore.get_option('system', 'verbose'):
                 sys.stdout.write('Applying correction: {0}\n'.format(c))
             kase = kase.apply_corrections(c)
         new_cases.append(kase)

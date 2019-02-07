@@ -7,19 +7,20 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
+import string
 from pathlib import Path
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List
 
 # External Libraries
 import matplotlib.pyplot as plt
 from matplotlib.path import Path as pltPath
 from matplotlib.transforms import Affine2D
-from matplotlib.patches import PathPatch
+from matplotlib.patches import PathPatch, ArrowStyle, FancyArrowPatch
 
 # This Library
-from .case import Case
+from .case import Case, layer_hights
 
-__all__ = ['case_template', 'plot_case_sketch']
+__all__ = ['case_template', 'plot_case_sketch', 'plot_case_sketch_vertical']
 
 
 def case_template( name: str,
@@ -72,8 +73,8 @@ def plot_case_sketch( case: Case,
                       beta_edge: Optional[str] = 'black',
                       alpha_fill: Optional[str] = 'blue',
                       alpha_edge: Optional[str] = 'black',
-                      connection_edge: Optional[str] = 'black'
-                      ):
+                      connection_edge: Optional[str] = None
+                      ) -> plt.Axes:
     """
     """
     def make_triangle(y, x, rot_deg, fcolor, ecolor, scale):
@@ -118,6 +119,66 @@ def plot_case_sketch( case: Case,
     ax.set_ylabel('Z')
     ax.grid(zorder=0)
     return ax
+
+
+def plot_case_sketch_vertical(case: Case,
+                              axs: Optional[List[plt.Axes]] = None,
+                              connections: Optional[bool] = False,
+                              beta_fill: Optional[str] = 'red',
+                              beta_edge: Optional[str] = 'black',
+                              alpha_fill: Optional[str] = 'blue',
+                              alpha_edge: Optional[str] = 'black'
+                              ) -> List[plt.Axes]:
+    """
+    """
+    def make_arrow(start, end, width, tip, fcolor, ecolor):
+        arrowstyle = ArrowStyle.Simple(head_length=width + tip, head_width=width + tip, tail_width=width)
+        arrow = FancyArrowPatch(start, end, arrowstyle=arrowstyle)
+        return PathPatch(arrow.get_path(), edgecolor=ecolor, facecolor=fcolor, zorder=2)
+
+    layers = case.cast_absolute()['topology.architecture']
+    if axs is None:
+        fig = plt.figure()
+        axs = []
+        for x, _ in enumerate(layers):
+            axs.append(plt.subplot2grid((len(layers), 1), (x, 0), fig=fig))
+    if len(axs) < len(layers):
+        raise ValueError('Not enough axis to plot all layers.')
+
+    maxt, minb = 0, 0
+    for i, layer in enumerate(layers):
+        tops, btms = layer_hights(case, layer)
+        maxt = max(tops) if max(tops) > maxt else maxt
+        minb = min(btms) if min(btms) < minb else minb
+
+    asciiU = string.ascii_uppercase
+    sizes = case.center_shape
+    maxw = max(sizes[l]['right'] for l in sizes)
+    minw = min(sizes[l]['left'] for l in sizes)
+
+    for i, layer in enumerate(layers):
+        tops, btms = layer_hights(case, layer)
+        for isse, sse in enumerate(layer):
+            rotation = True if sse['tilt']['x'] > 90 and sse['tilt']['x'] < 270 else False
+            scale = 2 if sse['type'] == 'E' else 3
+            tip = (scale / 2) if sse['type'] == 'E' else 0
+            ecolor = beta_edge if sse['type'] == 'E' else alpha_edge
+            fcolor = beta_fill if sse['type'] == 'E' else alpha_fill
+            if not rotation:
+                axs[i].add_artist(make_arrow([sse['coordinates']['x'], btms[isse]],
+                                             [sse['coordinates']['x'], tops[isse]],
+                                             scale, tip, fcolor, ecolor))
+            else:
+                axs[i].add_artist(make_arrow([sse['coordinates']['x'], tops[isse]],
+                                             [sse['coordinates']['x'], btms[isse]],
+                                             scale, tip, fcolor, ecolor))
+            axs[i].set_ylim(minb, maxt)
+            axs[i].set_xlim(minw - 1.7, maxw + 1.7)
+            axs[i].set_title('Layer {}'.format(asciiU[i]))
+            axs[i].grid(zorder=0)
+            axs[i].set_xlabel('X')
+            axs[i].set_ylabel('Y')
+    return axs
 
 
 def lighten_color(color, amount=0.5):

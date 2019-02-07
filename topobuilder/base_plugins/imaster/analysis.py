@@ -111,7 +111,7 @@ def geometric_properties( masterdf: pd.DataFrame,
     # Define PDB database.
     with SBIcr.on_option_value('structure', 'format', 'pdb'):
         pdbdb = SBIdb.PDBLink(core.get_option('imaster', 'pdb'))
-        if TBcore.get_option('topobuilder', 'verbose'):
+        if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('Set PDB database as: {}\n'.format(core.get_option('imaster', 'pdb')))
 
     # Prepare data: Sort by structure-chain to avoid multi-reading
@@ -131,7 +131,7 @@ def geometric_properties( masterdf: pd.DataFrame,
             pymol.write('remove solvent\n')
         filename, pdb3d = download_pdb(pdbdb, pdb3d, row['pdb'], row['chain'])
         pdb3d = pdb3d['AtomType:CA']
-        if TBcore.get_option('topobuilder', 'verbose'):
+        if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('  Structure {0} contains {1} residues.\n'.format(row['pdb'], pdb3d.residue_count))
         # 2. Get pieces
         pieces = make_pieces(pdb3d, row['match'], pymol)
@@ -145,7 +145,7 @@ def geometric_properties( masterdf: pd.DataFrame,
         angles = make_angles(planes, vectors)
         # 6. Points vs. planes
         points = make_distances(planes, vectors)
-        if TBcore.get_option('topobuilder', 'verbose'):
+        if TBcore.get_option('system', 'verbose'):
             sys.stdout.flush()
         return [filename, vectors, planes, angles, points]
 
@@ -163,14 +163,14 @@ def download_pdb( pdbdb: SBIdb.PDBLink,
                   ) -> Tuple[str, SBIstr.PDBFrame]:
     filename = pdbdb.store_local_path('{0}_{1}.pdb.gz'.format(pdbid, pdbchain))
     if not os.path.isfile(filename):
-        if TBcore.get_option('topobuilder', 'verbose'):
+        if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('  Downloading PDB {}\n'.format(pdbid))
         pdb3d = SBIstr.PDB('fetch:{0}'.format(pdbid), format='pdb', clean=True,
                            dehydrate=True, hetatms=False)['Chain:{}'.format(pdbchain)]
         pdb3d.write(filename, format='pdb')
         return filename, pdb3d
 
-    if TBcore.get_option('topobuilder', 'verbose'):
+    if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('  {} already exists\n'.format(filename))
     if pdb3d is None or pdb3d.id != '{0}_{1}'.format(pdbid, pdbchain):
         pdb3d = SBIstr.PDB('fetch:{0}'.format(pdbid), format='pdb', clean=True,
@@ -185,14 +185,14 @@ def make_pieces( pdb3d: SBIstr.PDBFrame,
                  pymol: Optional[TextIO] = None
                  ) -> List[SBIstr.PDBFrame]:
     pieces = []
-    if TBcore.get_option('topobuilder', 'verbose'):
+    if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('  Generating {0} vectors for {1}\n'.format(len(matches), pdb3d.id))
     for i, segment in enumerate(matches):
         with SBIcr.on_option_value('structure', 'source', 'label'):
             piece = pdb3d['Residue:{0}-{1}'.format(segment[0], segment[1])]
             pieces.append(piece)
         with SBIcr.on_option_value('structure', 'source', 'auth'):
-            if TBcore.get_option('topobuilder', 'verbose'):
+            if TBcore.get_option('system', 'verbose'):
                 first, last = piece.first_compound.number, piece.last_compound.number
                 sys.stdout.write('    {2} - Range: {0}-{1}\n'.format(first, last, pdb3d.id))
             if core.get_option('imaster', 'pymol'):
@@ -293,7 +293,7 @@ def parse_master_file( filename: str,
     This assumes that the PDS files basename has the standard nomenclature
     ``<pdbid>_<chain>.pds``.
     """
-    if TBcore.get_option('topobuilder', 'verbose'):
+    if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Reading MASTER file {}\n'.format(filename))
     df = pd.read_csv(filename,
                      names=list(range(20)), engine='python',

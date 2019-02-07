@@ -28,7 +28,7 @@ def apply( cases: List[Case],
     for case in cases:
         new_cases.extend(case.apply_topologies())
 
-    if TBcore.get_option('topobuilder', 'verbose'):
+    if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('From initial {0} architectures, {1} topologies were generated\n'.format(len(cases), len(new_cases)))
 
     for i, _ in enumerate(new_cases):

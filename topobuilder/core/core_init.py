@@ -7,8 +7,6 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import os
-import shutil
 
 # External Libraries
 from libconfig import Config
@@ -18,7 +16,8 @@ core = Config()
 
 with core.ifndef():
     # Register IO control options
-    core.register_option('topobuilder', 'verbose', False, 'bool', 'Makes topobuilder chatty.')
+    core.register_option('system', 'verbose', False, 'bool', 'Makes topobuilder chatty.')
+    core.register_option('system', 'overwrite', False, 'bool', 'Overwrite existing files.')
 
     # There are different levels of configuration files that can be picked.
     # If any configuration file is set up, the priority goes as follows:

@@ -28,7 +28,7 @@ def protocol( case: Union[str, Path, Dict, Case],
               overwrite: Optional[bool] = False ):
     """
     """
-    c = Case(case)  # .cast_absolute()
+    c = Case(case)
 
     protocols = c['configuration.protocols']
     if protocols is not None:

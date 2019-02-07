@@ -23,10 +23,10 @@ with core.ifndef():
     core.register_option('imaster', 'createPDS', shutil.which('createPDS'), 'path_in', 'createPDS executable.')
     core.register_option('imaster', 'pds', None, 'path_in', 'Local PDS database.')
     core.register_option('imaster', 'pdb', None, 'path_in', 'Local PDB database.')
-    core.register_option('imaster', 'slurm', True, 'bool', 'Use SLURM cluster submission system.')
-    core.register_option('imaster', 'slurm.partition', 'serial', 'string', 'Name of the available SLURM partition.')
-    core.register_option('imaster', 'slurm.array', 700, 'int', 'Into how may nodes is the search splitted.')
-    core.register_option('imaster', 'slurm.logs', os.getcwd(), 'path_in', 'Path on were to dump the log files.')
+    core.register_option('slurm', 'use', True, 'bool', 'Use SLURM cluster submission system.')
+    core.register_option('slurm', 'partition', 'serial', 'string', 'Name of the available SLURM partition.')
+    core.register_option('slurm', 'array', 700, 'int', 'Into how may nodes is the search splitted.')
+    core.register_option('slurm', 'logs', os.getcwd(), 'path_in', 'Path on were to dump the log files.')
 
     # There are different levels of configuration files that can be picked.
     # If any configuration file is set up, the priority goes as follows:

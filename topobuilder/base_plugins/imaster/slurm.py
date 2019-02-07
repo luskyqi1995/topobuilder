@@ -25,7 +25,7 @@ def make_slurm_file( pds_list: List ) -> str:
     """
     createPDS = str(Path(core.get_option('imaster', 'createPDS')).absolute())
     master = str(Path(core.get_option('imaster', 'master')).absolute())
-    slurm_array = core.get_option('imaster', 'slurm.array')
+    slurm_array = core.get_option('slurm', 'array')
 
     outstr = [slurm_header(slurm_array)]
     outstr.append('if [ ! -f {0}.pds ]; then')
@@ -59,8 +59,8 @@ def make_slurm_file( pds_list: List ) -> str:
 
 def slurm_header( slurm_array: int ) -> str:
 
-    partition = core.get_option('imaster', 'slurm.partition')
-    logpath = core.get_option('imaster', 'slurm.logs')
+    partition = core.get_option('slurm', 'partition')
+    logpath = core.get_option('slurm', 'logs')
 
     if Path(logpath).is_dir():
         logpath = Path(logpath).resolve().joinpath('output')
