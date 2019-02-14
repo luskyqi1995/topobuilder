@@ -30,6 +30,7 @@ def options():
     parser.add_argument('-planepick', dest='planepick', action='store', nargs='+', default=[])
 
     options = parser.parse_args()
+
     if not Path(options.input).is_file():
         raise IOError('Unable to find MASTER file {}.'.format(options.input))
     if len(options.planepick) == 0:
@@ -41,6 +42,9 @@ def options():
     else:
         core.set_option('imaster', 'pymol', False)
         options.pymol = None
+
+    options.planepick = [int(x) for x in options.planepick]
+    options.planepick = [options.planepick, ]
 
     return options
 

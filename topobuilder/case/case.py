@@ -354,17 +354,19 @@ class Case( object ):
 
         position = {'x': 0, 'y': 0, 'z': 0}
         defaults = c['configuration.defaults']
+        zlayer = 0
         for i, layer in enumerate(c['topology.architecture']):
             position['x'] = 0
             back = None if i == 0 else c['topology.architecture'][i - 1][0]['type']
             here = layer[0]['type']
-            position['z'] += dschema.get_z_distance(defaults['distance'], back, here)
+            zlayer += dschema.get_z_distance(defaults['distance'], back, here)
             for j, sse in enumerate(layer):
                 left = None if j == 0 else layer[j - 1]['type']
                 here = sse['type']
                 # X shift is inherited in the following structure.
                 position['x'] += dschema.get_x_distance(defaults['distance'], left, here)
                 position['y'] = 0  # Reset Y coordinate
+                position['z'] = zlayer  # Reset Z coordinate
                 c.data['topology']['architecture'][i][j] = sschema.cast_absolute(sse, position, defaults)
                 position = sschema.get_position(c['topology.architecture'][i][j])
         return c.check()
@@ -514,6 +516,7 @@ def layer_corrections( corrections: dict, case: Case) -> Dict:
 
     :return: Updated corrections.
     """
+    case = case.cast_absolute()
     asciiU = string.ascii_uppercase
     sizes = case.center_shape
     maxwidth = max(sizes[l]['width'] for l in sizes)
@@ -592,6 +595,31 @@ def lc_zcurve( corrections: Dict, layer: List[Dict], zcurve: float ) -> Dict:
     # Do not apply when (A) there is less than SSE or (B) curve is 0 (default)
     if len(layer) <= 2 or zcurve == 0:
         return corrections
+
+    # Create curve guiding points
+    centerINI = layer[0]['coordinates']
+    centerINI = [centerINI['x'], centerINI['z']]
+    centerEND = layer[-1]['coordinates']
+    centerEND = [centerEND['x'], centerEND['z']]
+    midEND = (np.asarray(centerEND) - np.asarray(centerINI)) / 2
+    centerINI[-1] += zcurve
+    centerEND[-1] += zcurve
+    midEND[-1] -= zcurve
+    points = np.asarray([centerINI, midEND, centerEND])
+    # get x and y vectors
+    x = points[:, 0]
+    y = points[:, 1]
+
+    # calculate polynomial
+    z = np.polyfit(x, y, 2)
+    f = np.poly1d(z)
+
+    for i, sse in enumerate(layer):
+        corrections.setdefault(sse['id'], {}).setdefault('coordinates', {}).setdefault('z', 0)
+        currentX = sse['coordinates']['x']
+        corrections[sse['id']]['coordinates']['z'] += np.around(f(currentX), decimals=3)
+
+    return corrections
 
 
 def sse_corrections( corrections: dict, case: Case ) -> Case:
