@@ -33,8 +33,7 @@ def options():
 
     if not Path(options.input).is_file():
         raise IOError('Unable to find MASTER file {}.'.format(options.input))
-    if len(options.planepick) == 0:
-        options.planepick = None
+
 
     if core.get_option('imaster', 'pymol') or options.pymol:
         core.set_option('imaster', 'pymol', True)
@@ -43,8 +42,12 @@ def options():
         core.set_option('imaster', 'pymol', False)
         options.pymol = None
 
-    options.planepick = [int(x) for x in options.planepick]
-    options.planepick = [options.planepick, ]
+    if len(options.planepick) == 0:
+        options.planepick = None
+    else:
+        options.planepick = [int(x) for x in options.planepick]
+        options.planepick = [options.planepick, ]
+
 
     return options
 
