@@ -27,6 +27,9 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """
     """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('--- TB PLUGIN: CORRECTOR ---\n')
+
     if corrections is None:
         corrections = []
     if not isinstance(corrections, list):

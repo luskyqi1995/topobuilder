@@ -201,6 +201,19 @@ class Case( object ):
             return cr
         return False
 
+    def get_sse_by_id( self, sse_id: str ) -> Dict:
+        """Returns the data corresponding to a given secondary structre according to
+        its identifier.
+
+        If the identifier does not belong to any secondary structure of the :class:`.Case`,
+        it returns :data:`None`.
+        """
+
+        for _, _, sse in self:
+            if sse['id'] == sse_id:
+                return deepcopy(sse)
+        return None
+
     def get_type_for_layer( self, layer: Union[int, str] ) -> str:
         layerint = layer_int(layer)
 
@@ -492,6 +505,12 @@ class Case( object ):
                 return False if ta is None else ta != [[]]
 
         raise NotImplementedError()
+
+    def __iter__( self ):
+        architecture = self['topology.architecture']
+        for i, layer in enumerate(architecture):
+            for j, sse in enumerate(layer):
+                yield i, j, sse
 
     def __getitem__( self, key ):
         r = self.data

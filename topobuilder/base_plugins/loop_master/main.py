@@ -9,28 +9,31 @@
 # Standard Libraries
 import getpass
 import os
+import sys
 from pathlib import Path
 import shutil
 from typing import Optional, Tuple, List, Union
 from string import ascii_uppercase
+from itertools import islice
 
 # External Libraries
+import pandas as pd
+from SBI.structure import PDB
 
 # This Library
 from topobuilder.case import Case
-from .analysis import get_steps
-from .slurm import make_slurm_file
+import topobuilder.core as TBcore
+from topobuilder import plugin_source
 from .core import core
 
 
-__all__ = ['apply']
-
-
-def apply( cases: List[Case], prtid: int, **kwargs ) -> List[Case]:
+def apply( cases: List[Case],
+           prtid: int,
+           **kwargs ) -> List[Case]:
     """
     """
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('--- TB PLUGIN: IMASTER ---\n')
+        sys.stdout.write('--- TB PLUGIN: LOOP_MASTER ---\n')
 
     # Get list of PDS structures
     database = core.get_option('master', 'pds')
@@ -53,18 +56,24 @@ def apply( cases: List[Case], prtid: int, **kwargs ) -> List[Case]:
 def case_apply( case: Case, pds_list: List[str] ) -> str:
     """
     """
-    # Interactive MASTER smoothing is only applied to a Case with one single connectivity and already reoriented
+    # Loop MASTER is only applied to a Case with one single connectivity and already reoriented
     if case.connectivity_count > 1:
-        raise ValueError('Interactive MASTER smoothing can only be applied to one connectivity.')
+        raise ValueError('Loop MASTER can only be applied to one connectivity.')
     if not case['configuration.reoriented'] and case.connectivity_count == 1:
-        case = case.cast_absolute().apply_topologies()[0]
-    # Find steps: Tops we will submit 2-layer searches
-    steps = get_steps([x[-1] == 'E' for x in case.architecture_str.split('.')])
-    print(steps)
+        # We will need the coordinates of the secondary structures to execute this one
+        # This will already cast it to absolute
+        case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True, overwrite=False)
 
+    # Find steps: Each pair of secondary structure.
+    it = case.connectivities_str[0].split('.')
+    steps = [it[i:i + 2] for i in range(0, len(it) - 1)]
 
-    # Make slurm file template
-    # print(make_slurm_file(pds_list))
+    for i, sse in enumerate(steps):
+        sse1 = pd.DataFrame(case.get_sse_by_id(sse[0])['metadata']['atoms'],
+                            columns=['auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z'])
+        sse2 = pd.DataFrame(case.get_sse_by_id(sse[1])['metadata']['atoms'],
+                            columns=['auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z'])
+        structure = PDB(pd.concat([sse1, sse2]))
+        structure.write(output_file='loop_master.jump{:02d}.pdb'.format(i), format='pdb', clean=True)
+
     return case
-
-# apply(Case('test'), '/Volumes/MiniTwo/data/TopoBuilderData/database/master', 'master', 'createPDS', '.', 'serial', 700)

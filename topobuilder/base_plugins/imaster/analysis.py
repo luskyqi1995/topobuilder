@@ -78,8 +78,8 @@ def geometric_analysis( masterdf: pd.DataFrame,
                         ) -> dict:
     """
     """
-    if core.get_option('imaster', 'sample') > 0:
-        wdf = masterdf.sample(core.get_option('imaster', 'sample'))
+    if core.get_option('master', 'sample') > 0:
+        wdf = masterdf.sample(core.get_option('master', 'sample'))
     else:
         wdf = masterdf
     return wdf
@@ -110,9 +110,9 @@ def geometric_properties( masterdf: pd.DataFrame,
     """
     # Define PDB database.
     with SBIcr.on_option_value('structure', 'format', 'pdb'):
-        pdbdb = SBIdb.PDBLink(core.get_option('imaster', 'pdb'))
+        pdbdb = SBIdb.PDBLink(core.get_option('master', 'pdb'))
         if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Set PDB database as: {}\n'.format(core.get_option('imaster', 'pdb')))
+            sys.stdout.write('Set PDB database as: {}\n'.format(core.get_option('master', 'pdb')))
 
     # Prepare data: Sort by structure-chain to avoid multi-reading
     newdf = masterdf.sort_values(['pdb', 'chain'])

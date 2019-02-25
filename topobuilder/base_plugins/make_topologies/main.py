@@ -24,6 +24,9 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """
     """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('--- TB PLUGIN: MAKE_TOPOLOGIES ---\n')
+
     new_cases = []
     for case in cases:
         new_cases.extend(case.apply_topologies())

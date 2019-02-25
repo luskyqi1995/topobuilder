@@ -23,8 +23,8 @@ from .core import core
 def make_slurm_file( pds_list: List ) -> str:
     """
     """
-    createPDS = str(Path(core.get_option('imaster', 'createPDS')).absolute())
-    master = str(Path(core.get_option('imaster', 'master')).absolute())
+    createPDS = str(Path(core.get_option('master', 'createPDS')).absolute())
+    master = str(Path(core.get_option('master', 'master')).absolute())
     slurm_array = core.get_option('slurm', 'array')
 
     outstr = [slurm_header(slurm_array)]

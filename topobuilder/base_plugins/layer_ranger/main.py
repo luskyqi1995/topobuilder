@@ -27,6 +27,9 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """
     """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('--- TB PLUGIN: LAYER_RANGER ---\n')
+
     expected = []
     for layer in sorted(ranger):
         a, b = ranger[layer]

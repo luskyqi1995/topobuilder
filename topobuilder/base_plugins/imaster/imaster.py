@@ -34,7 +34,6 @@ def options():
     if not Path(options.input).is_file():
         raise IOError('Unable to find MASTER file {}.'.format(options.input))
 
-
     if core.get_option('imaster', 'pymol') or options.pymol:
         core.set_option('imaster', 'pymol', True)
         options.pymol = options.out + '.pymol'

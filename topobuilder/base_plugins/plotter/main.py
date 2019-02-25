@@ -33,6 +33,9 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """
     """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('--- TB PLUGIN: PLOTTER ---\n')
+
     if outfile is None:
         outfile = Path().cwd().resolve()
     if isinstance(outfile, str):
