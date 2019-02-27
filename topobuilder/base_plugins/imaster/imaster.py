@@ -47,7 +47,6 @@ def options():
         options.planepick = [int(x) for x in options.planepick]
         options.planepick = [options.planepick, ]
 
-
     return options
 
 

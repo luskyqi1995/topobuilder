@@ -18,8 +18,7 @@ from typing import Union, Dict
 # This Library
 from topobuilder.case import Case
 from .parametric import ParametricStructure
-#from .virtual.VirtualMaker import VirtualMaker
-#from ..form.Form import Form
+
 
 __all__ = ['GeneralArchitect', 'SSEArchitect']
 
@@ -125,6 +124,12 @@ class AlphaHelixArchitect( ParametricStructure ):
              'CA': [2.300, 0.000, 0.000],
              'C': [1.576, -1.029, 0.870],
              'O': [1.911, -2.248, 0.871]}
+    # CHOP780201 alpha-helix propensity AAindex (Chou-Fasman, 1978b)
+    # TO 0: G -> 0.57; P -> 0.57
+    _AA_STAT = [("A", 1.42), ("L", 1.21), ("R", 0.98), ("K", 1.16), ("N", 0.67),
+                ("M", 1.45), ("D", 1.01), ("F", 1.13), ("C", 0.70), ("P", 0.00),
+                ("Q", 1.11), ("S", 0.77), ("E", 1.51), ("T", 0.83), ("G", 0.00),
+                ("W", 1.08), ("H", 1.00), ("Y", 0.69), ("I", 1.08), ("V", 1.06)]
 
 
 class Helix310Architect( ParametricStructure ):
@@ -148,3 +153,9 @@ class FlatBetaArchitect( ParametricStructure ):
              'CA': [0.000, 0.000, 1.210],
              'C': [-0.550, 1.200, 0.330],
              'O': [-2.090, 1.300, 0.220]}
+    # CHOP780202 beta-sheet propensity AAindex (Chou-Fasman, 1978b)
+    # TO 0: G -> 0.75; P -> 0.55
+    _AA_STAT = [("A", 0.83), ("L", 1.30), ("R", 0.93), ("K", 0.74), ("N", 0.89),
+                ("M", 1.05), ("D", 0.54), ("F", 1.38), ("C", 1.19), ("P", 0.00),
+                ("Q", 1.10), ("S", 0.75), ("E", 0.37), ("T", 1.19), ("G", 0.00),
+                ("W", 1.37), ("H", 0.87), ("Y", 1.47), ("I", 1.60), ("V", 1.70)]

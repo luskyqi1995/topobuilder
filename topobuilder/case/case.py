@@ -184,6 +184,14 @@ class Case( object ):
         return result
 
     @property
+    def connectivities_paths( self ) -> Tuple[Path]:
+        """Returns a list with the expected :class:`Path` for each.
+
+        :return: :class:`tuple` of :class:`Path`
+        """
+        return tuple([Path('{}/connectivity/{}'.format(self.name, x)) for x in self.connectivities_str])
+
+    @property
     def is_absolute( self ) -> bool:
         cr = self['configuration.relative']
         if cr is not None:

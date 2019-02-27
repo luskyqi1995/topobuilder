@@ -17,6 +17,7 @@ core = Config()
 with core.ifndef():
     # Register IO control options
     core.register_option('system', 'verbose', False, 'bool', 'Makes topobuilder chatty.')
+    core.register_option('system', 'debug', False, 'bool', 'Makes topobuilder VERY chatty.')
     core.register_option('system', 'overwrite', False, 'bool', 'Overwrite existing files.')
 
     # There are different levels of configuration files that can be picked.

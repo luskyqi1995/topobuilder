@@ -64,16 +64,27 @@ def case_apply( case: Case, pds_list: List[str] ) -> str:
         # This will already cast it to absolute
         case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True, overwrite=False)
 
+    # Generate the folder tree for a single connectivity.
+    folders = case.connectivities_paths[0]
+    folders.mkdir(parents=True, exist_ok=True)
+
     # Find steps: Each pair of secondary structure.
     it = case.connectivities_str[0].split('.')
     steps = [it[i:i + 2] for i in range(0, len(it) - 1)]
 
     for i, sse in enumerate(steps):
+        wfolder = folders.joinpath('loop{:02d}'.format(i + 1))
+        wfolder.mkdir(parents=True, exist_ok=True)
+
         sse1 = pd.DataFrame(case.get_sse_by_id(sse[0])['metadata']['atoms'],
-                            columns=['auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z'])
+                            columns=['auth_comp_id', 'auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z'])
         sse2 = pd.DataFrame(case.get_sse_by_id(sse[1])['metadata']['atoms'],
-                            columns=['auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z'])
-        structure = PDB(pd.concat([sse1, sse2]))
-        structure.write(output_file='loop_master.jump{:02d}.pdb'.format(i), format='pdb', clean=True)
+                            columns=['auth_comp_id', 'auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z'])
+        structure = PDB(pd.concat([sse1, sse2])).renumber()
+        outfile = wfolder.joinpath('loop_master.jump{:02d}.pdb'.format(i + 1))
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.write('-> generating structure {}\n'.format(outfile.resolve()))
+        structure.write(output_file=str(outfile), format='pdb', clean=True,
+                        force=TBcore.get_option('system', 'overwrite'))
 
     return case

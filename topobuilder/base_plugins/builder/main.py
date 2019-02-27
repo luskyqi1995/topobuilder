@@ -69,6 +69,7 @@ def make_structure( sse: Dict ) -> Case:
 
     structure = SSEArchitect(sse, type=sse['type']).pdb
     sse['metadata'].setdefault('atoms', None)
-    sse['metadata']['atoms'] = list(structure[['auth_atom_id', 'auth_seq_id', 'Cartn_x', 'Cartn_y', 'Cartn_z']].values)
+    sse['metadata']['atoms'] = list(structure[['auth_comp_id', 'auth_atom_id', 'auth_seq_id',
+                                               'Cartn_x', 'Cartn_y', 'Cartn_z']].values)
 
     return sse
