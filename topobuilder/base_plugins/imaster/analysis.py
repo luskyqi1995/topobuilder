@@ -189,7 +189,8 @@ def make_pieces( pdb3d: SBIstr.PDBFrame,
         sys.stdout.write('  Generating {0} vectors for {1}\n'.format(len(matches), pdb3d.id))
     for i, segment in enumerate(matches):
         with SBIcr.on_option_value('structure', 'source', 'label'):
-            piece = pdb3d['Residue:{0}-{1}'.format(segment[0], segment[1])]
+            # MASTER starts match count at 0!
+            piece = pdb3d['Residue:{0}-{1}'.format(segment[0] + 1, segment[1] + 1)]
             pieces.append(piece)
         with SBIcr.on_option_value('structure', 'source', 'auth'):
             if TBcore.get_option('system', 'verbose'):

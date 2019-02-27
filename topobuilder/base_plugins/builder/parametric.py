@@ -73,6 +73,9 @@ class ParametricStructure( object ):
         _MONO = pd.DataFrame(self._MONO).T
         for i, p in enumerate(points):
             coords = SBIgeo.rotate_degrees(_MONO.values, y=self._ROTATION * i)
+            # print('...')
+            # print(SBIgeo.rotate_degrees(_MONO.values, x=180, y=180))
+            # exit()
             coords = SBIgeo.translate(coords, p)
             self.pdb.append(coords)
         self.pdb = np.vstack(self.pdb)

@@ -28,7 +28,6 @@ _PLT_TYPES_ = ['sketchXZ', 'sketchXY']
 def apply( cases: List[Case],
            prtid: int,
            outfile: Optional[Union[str, Path]] = None,
-           outformat: Optional[str] = 'png',
            plot_types: Optional[List[str]] = None,
            **kwargs ) -> List[Case]:
     """
@@ -41,8 +40,7 @@ def apply( cases: List[Case],
     if isinstance(outfile, str):
         outfile = Path(outfile).resolve()
 
-    if outformat not in ['png', 'svg']:
-        raise ValueError('Output formats are limited to "png" and "svg"')
+    outformat = TBcore.get_option('system', 'image')
 
     plot_types = [_PLT_TYPES_[0], ] if plot_types is None else plot_types
     if len(set(plot_types).difference(_PLT_TYPES_)) > 0:
@@ -51,9 +49,9 @@ def apply( cases: List[Case],
 
     for ptype in plot_types:
         if outfile.is_dir():
-            thisoutfile = outfile.joinpath(".".join([str(os.getppid()), str(prtid), ptype, outformat]))
+            thisoutfile = outfile.joinpath(".".join([str(os.getppid()), str(prtid), ptype + outformat]))
         else:
-            thisoutfile = Path(str(outfile) + '.' + ptype + '.' + outformat)
+            thisoutfile = Path(str(outfile) + '.' + ptype + outformat)
         thisoutfile.parent.mkdir(parents=True, exist_ok=True)
         if not TBcore.get_option('system', 'overwrite') and thisoutfile.is_file():
             sys.stderr.write('Unable to overwrite file {}: Already exists\n'.format(thisoutfile))

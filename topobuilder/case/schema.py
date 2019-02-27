@@ -31,6 +31,7 @@ _DEFAULT_HELIX_BETA_DISTANCE  = 11
 _DEFAULT_BETA_PAIR_DISTANCE_  = 4.85
 _DEFAULT_BETA_STACK_DISTANCE_ = 8
 _DEFAULT_LOOP_DISTANCE_       = 18.97
+_DEFAULT_LOOP_PERIODE_        = 3.2
 
 _ACCEPTED_SSE_TYPES_          = r'^[HE]$|^S[2-9]\d*$'
 _ACCEPTED_SSE_PATTERN_        = re.compile(_ACCEPTED_SSE_TYPES_)
@@ -63,6 +64,7 @@ class DistanceSchema( Schema ):
     bb_pair = fields.Number(default=_DEFAULT_BETA_PAIR_DISTANCE_)
     bb_stack = fields.Number(default=_DEFAULT_BETA_STACK_DISTANCE_)
     max_loop = fields.Number(default=_DEFAULT_LOOP_DISTANCE_)
+    loop_step = fields.Number(default=_DEFAULT_LOOP_PERIODE_)
 
     def get_x_distance( self, data: dict, type1: str, type2: str ) -> float:
         """Provide the x distance between 2 secondary structures depending on their type.
