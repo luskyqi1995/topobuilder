@@ -7,7 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-from typing import List, Union, Dict, Optional
+from typing import List, Dict, Optional
 from pathlib import Path
 import copy
 import sys
@@ -24,10 +24,10 @@ __all__ = ['apply', 'case_apply']
 
 def apply( cases: List[Case],
            prtid: int,
-           connectivity: bool = True,
-           overwrite: bool = False,
+           connectivity: Optional[bool] = True,
+           overwrite: Optional[bool] = False,
            **kwargs ) -> List[Case]:
-    """
+    """Create coordinate entities from the Case data.
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: BUILDER ---\n')

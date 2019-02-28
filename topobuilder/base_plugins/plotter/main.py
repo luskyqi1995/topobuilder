@@ -30,7 +30,7 @@ def apply( cases: List[Case],
            outfile: Optional[Union[str, Path]] = None,
            plot_types: Optional[List[str]] = None,
            **kwargs ) -> List[Case]:
-    """
+    """Generate visual representations of the Case.
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: PLOTTER ---\n')

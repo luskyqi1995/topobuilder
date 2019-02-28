@@ -29,7 +29,7 @@ __all__ = ['apply']
 
 
 def apply( cases: List[Case], prtid: int, **kwargs ) -> List[Case]:
-    """
+    """Use MASTER to correct secondary structure placement (smoothing).
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: IMASTER ---\n')

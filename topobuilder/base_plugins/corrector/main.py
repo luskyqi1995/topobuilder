@@ -25,7 +25,7 @@ def apply( cases: List[Case],
            prtid: int,
            corrections: Optional[Union[str, Dict, Path, List]] = None,
            **kwargs ) -> List[Case]:
-    """
+    """Apply corrections to the Case.
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: CORRECTOR ---\n')

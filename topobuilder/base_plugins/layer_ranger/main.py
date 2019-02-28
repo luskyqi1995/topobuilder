@@ -25,7 +25,7 @@ def apply( cases: List[Case],
            prtid: int,
            ranger: Dict,
            **kwargs ) -> List[Case]:
-    """
+    """Explore multiple ranges of different secondary structures in each layer.
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: LAYER_RANGER ---\n')

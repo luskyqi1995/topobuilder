@@ -22,7 +22,7 @@ __all__ = ['apply']
 def apply( cases: List[Case],
            prtid: int,
            **kwargs ) -> List[Case]:
-    """
+    """Analyze possible connectivities in the Case.
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: MAKE_TOPOLOGIES ---\n')

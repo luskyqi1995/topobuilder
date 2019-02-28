@@ -7,6 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
+import os
 import re
 import json
 import string
@@ -189,7 +190,8 @@ class Case( object ):
 
         :return: :class:`tuple` of :class:`Path`
         """
-        return tuple([Path('{}/connectivity/{}'.format(self.name, x)) for x in self.connectivities_str])
+        name = os.path.join(*self.name.split('_'))
+        return tuple([Path(os.path.join(name, 'connectivity', x)) for x in self.connectivities_str])
 
     @property
     def is_absolute( self ) -> bool:

@@ -41,9 +41,11 @@ def apply( cases: List[Case],
            prtid: int,
            loop_range: int = 3,
            top_loops: int = 20,
-           harpins_2: bool=True,
+           harpins_2: bool = True,
            **kwargs ) -> List[Case]:
-    """
+    """Use MASTER to cover the transitions between secondary structures.
+
+    And something else.
     """
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('--- TB PLUGIN: LOOP_MASTER ---\n')
@@ -83,8 +85,8 @@ def apply( cases: List[Case],
 
     # Execute for each case
     for i, case in enumerate(cases):
-        cases[i].data.setdefault('metadata', {}).setdefault('corrections', [])
-        cases[i].data['metadata']['corrections'].append(case_apply(case, database, loop_range, top_loops, abegodata, harpins_2))
+        cases[i].data.setdefault('metadata', {}).setdefault('loop_fragments', [])
+        cases[i] = case_apply(case, database, loop_range, top_loops, abegodata, harpins_2)
         cases[i].set_protocol_done(prtid)
 
     if tempdb:
@@ -133,21 +135,31 @@ def case_apply( case: Case,
         is_hairpin = check_hairpin(sse1_name, sse2_name)
 
         if not masfile.is_file():
-            # 2. Generate structures
+            # 3. Generate structures
             sse1, sse2 = make_structure(sse1, sse2, outfile)
 
-            # 3. calculate expected loop length by loop_step
+            # 4. calculate expected loop length by loop_step
             Mdis, mdis = get_loop_length(sse1, sse2, loop_step, loop_range)
 
-            # 4. Run master
+            # 5. Run master
             execute_master(outfile, pds_list, mdis, Mdis)
 
-            # 5. Minimize master data (pick top_loopsx3 lines to read and minimize the files)
+            # 6. Minimize master data (pick top_loopsx3 lines to read and minimize the files)
             minimize_master_file(masfile, top_loops, 3)
 
-        # 6. Retrieve master data
+        # 7. Retrieve master data
         dfloop = process_master_data(masfile, sse1_name, sse2_name, abego, top_loops, is_hairpin and harpins_2)
-        print(dfloop)
+        if TBcore.get_option('system', 'debug'):
+            sys.stdout.write(dfloop.to_string())
+
+        # 8. Make files
+        file3 = outfile.with_suffix('.3mers')
+        file9 = outfile.with_suffix('.9mers')
+
+        # 9. Attach files
+        case.data['metadata']['loop_fragments'].append({'length': dfloop.iloc[0].values[0],
+                                                        'abego': list(dfloop['abego'].values),
+                                                        'fragfiles': [str(file3.resolve()), str(file9.resolve())]})
 
     return case
 
@@ -198,10 +210,10 @@ def execute_master(outfile: Path, pds_list: Path, mdis: int, Mdis: int):
                                               pds_list, outfile.with_suffix('.master'), mdis, Mdis))
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(createcmd)))
-    # run(createcmd)
+    run(createcmd)
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(mastercmd)))
-    # run(mastercmd)
+    run(mastercmd)
 
 
 def minimize_master_file(masfile: Path, top_loops: int, multiplier: int):
@@ -265,6 +277,9 @@ def process_master_data( masfile: Path,
     pick = [int(x.get_text()) for x in ax.get_xticklabels()].index(pick)
     ax.plot(pick, cnt, marker=11, color='black')
     ax.set_title('loop {} <-> {}'.format(name1, name2))
-    plt.savefig(masfile.with_suffix(TBcore.get_option('system', 'image')), dpi=300)
+    imagename = masfile.with_suffix(TBcore.get_option('system', 'image'))
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('-> loop image summary at {}\n'.format(imagename))
+    plt.savefig(imagename, dpi=300)
 
     return finaldf

@@ -61,3 +61,4 @@ def protocol( case: Union[str, Path, Dict, Case],
 
     # for c in cases:
     #     c.write()
+    return cases
