@@ -101,8 +101,7 @@ def geometric_stats( filename: str,
     def execute( row ):
         nonlocal pymol
         # 1. Download file
-        pdb3d = SBIstr.PDB(row['pdb_pagh'], format='pdb', clean=True,
-                           dehydrate=True, hetatms=False)
+        pdb3d = SBIstr.PDB(str(row['pdb_path']), format='pdb', clean=True, dehydrate=True, hetatms=False)
         pdb3d = pdb3d['AtomType:CA']
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('  Structure {0} contains {1} residues.\n'.format(row['pdb'], pdb3d.residue_count))
