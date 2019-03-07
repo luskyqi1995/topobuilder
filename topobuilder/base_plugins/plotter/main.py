@@ -36,7 +36,8 @@ def apply( cases: List[Case],
         sys.stdout.write('--- TB PLUGIN: PLOTTER ---\n')
 
     if outfile is None:
-        outfile = Path().cwd().resolve()
+        outfile = cases[0].main_path.joinpath('images').resolve()
+        outfile.mkdir(parents=True, exist_ok=True)
     if isinstance(outfile, str):
         outfile = Path(outfile).resolve()
 
@@ -49,14 +50,14 @@ def apply( cases: List[Case],
 
     for ptype in plot_types:
         if outfile.is_dir():
-            thisoutfile = outfile.joinpath(".".join([str(os.getppid()), str(prtid), ptype + outformat]))
+            thisoutfile = outfile.joinpath(".".join([str(os.getppid()), '{:02d}'.format(prtid), ptype + outformat]))
         else:
             thisoutfile = Path(str(outfile) + '.' + ptype + outformat)
         thisoutfile.parent.mkdir(parents=True, exist_ok=True)
         if not TBcore.get_option('system', 'overwrite') and thisoutfile.is_file():
             sys.stderr.write('Unable to overwrite file {}: Already exists\n'.format(thisoutfile))
-
             continue
+
         fig, ax = getattr(pts, ptype)(cases, **kwargs.pop(ptype, {}))
         plt.tight_layout()
         plt.savefig(str(thisoutfile), dpi=300)

@@ -10,7 +10,7 @@
 import os
 import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import math
 from tempfile import NamedTemporaryFile
 import shlex
@@ -26,6 +26,7 @@ from SBI.structure import PDB, PDBFrame, ChainFrame
 import SBI.structure.geometry as SBIgeo
 import seaborn as sns
 import matplotlib.pyplot as plt
+import rstoolbox
 
 # This Library
 from topobuilder.case import Case
@@ -68,25 +69,15 @@ def apply( cases: List[Case],
         raise ValueError('The provided MASTER database directory/list file cannot be found.')
 
     # Get ABEGOS
-    abegos = core.get_option('loop_master', 'abego')
-    abegos = Path(abegos)
-    if not abegos.is_file():
-        raise ValueError('The ABEGO fasta file has to be provided')
-    else:
-        doopen = gzip.open if abegos.suffix == '.gz' else open
-        abegodata = []
-        with doopen(abegos, 'rt') as fd:
-            for line1, line2 in itertools.zip_longest(*[fd] * 2):
-                line2 = line2 if len(line2.strip()) != 0 else 'NON\n'
-                line1 = line1.strip().lstrip('>').split('_')
-                abegodata.append('{},{},{}'.format(line1[0], line1[1], line2))
-        abegodata = pd.read_csv(StringIO(''.join(abegodata)), names=['pdb', 'chain', 'abego'], header=None)
-        abegodata = abegodata[abegodata['abego'] != 'NON']
+    abegodata = get_abegos()
+
+    # Get FragFiles
+    fragfiles = get_fragfiles()
 
     # Execute for each case
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('loop_fragments', [])
-        cases[i] = case_apply(case, database, loop_range, top_loops, abegodata, harpins_2)
+        cases[i] = case_apply(case, database, loop_range, top_loops, abegodata, harpins_2, fragfiles)
         cases[i].set_protocol_done(prtid)
 
     if tempdb:
@@ -100,7 +91,8 @@ def case_apply( case: Case,
                 loop_range: int,
                 top_loops: int,
                 abego: pd.DataFrame,
-                harpins_2: bool ) -> str:
+                harpins_2: bool,
+                fragfiles: pd.DataFrame ) -> str:
     """
     """
     # Loop MASTER is only applied to a Case with one single connectivity and already reoriented
@@ -119,6 +111,9 @@ def case_apply( case: Case,
     it = case.connectivities_str[0].split('.')
     steps = [it[i:i + 2] for i in range(0, len(it) - 1)]
     loop_step = case.cast_absolute()['configuration.defaults.distance.loop_step']
+    lengths = case.connectivity_len[0]
+    print(lengths)
+    start = 1
 
     for i, sse in enumerate(steps):
         # 1. Make folders
@@ -148,9 +143,12 @@ def case_apply( case: Case,
             minimize_master_file(masfile, top_loops, 3)
 
         # 7. Retrieve master data
-        dfloop = process_master_data(masfile, sse1_name, sse2_name, abego, top_loops, is_hairpin and harpins_2)
+        dfloop = process_master_data(masfile, sse1_name, sse2_name, abego, fragfiles, top_loops, is_hairpin and harpins_2)
         if TBcore.get_option('system', 'debug'):
             sys.stdout.write(dfloop.to_string())
+
+        # 8. Make Fragments
+
 
         # 8. Make files
         file3 = outfile.with_suffix('.3mers')
@@ -162,6 +160,44 @@ def case_apply( case: Case,
                                                         'fragfiles': [str(file3.resolve()), str(file9.resolve())]})
 
     return case
+
+
+def make_fragment_files( dfloop: pd.DataFrame, fragfiles: pd.DataFrame ) -> List[Dict]:
+    """
+    """
+    pass
+
+
+def get_fragfiles():
+    """
+    """
+    fragpath = Path(core.get_option('master', 'fragments'))
+    if not fragpath.is_dir():
+        raise IOError('MASTER fragments folder cannot be found.')
+    return pd.DataFrame([(x.name[:4], x.name[5:6], x, y) for x, y in zip(sorted(fragpath.glob('*/*3mers.gz')),
+                                                                         sorted(fragpath.glob('*/*9mers.gz')))],
+                        columns=['pdb', 'chain', '3mers', '9mers'])
+
+
+def get_abegos():
+    """
+    """
+    abegos = core.get_option('loop_master', 'abego')
+    abegos = Path(abegos)
+    if not abegos.is_file():
+        raise IOError('The ABEGO fasta file has to be provided')
+    else:
+        doopen = gzip.open if abegos.suffix == '.gz' else open
+        abegodata = []
+        with doopen(abegos, 'rt') as fd:
+            for line1, line2 in itertools.zip_longest(*[fd] * 2):
+                line2 = line2 if len(line2.strip()) != 0 else 'NON\n'
+                line1 = line1.strip().lstrip('>').split('_')
+                abegodata.append('{},{},{}'.format(line1[0], line1[1], line2))
+        abegodata = pd.read_csv(StringIO(''.join(abegodata)), names=['pdb', 'chain', 'abego'], header=None)
+        abegodata = abegodata[abegodata['abego'] != 'NON']
+
+    return abegodata
 
 
 def make_structure(sse1: dict, sse2: dict, outfile: Path) -> Tuple[PDBFrame, PDBFrame]:
@@ -216,7 +252,7 @@ def execute_master(outfile: Path, pds_list: Path, mdis: int, Mdis: int):
     run(mastercmd)
 
 
-def minimize_master_file(masfile: Path, top_loops: int, multiplier: int):
+def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ):
     """
     """
     try:
@@ -246,6 +282,7 @@ def process_master_data( masfile: Path,
                          name1: str,
                          name2: str,
                          abego: pd.DataFrame,
+                         fragfiles: pd.DataFrame,
                          top_loops: int,
                          hairpin: bool ) -> pd.DataFrame:
     """
@@ -257,7 +294,7 @@ def process_master_data( masfile: Path,
         return row['abego'][match[0][0]: match[1][1] + 1], loop, len(loop)
 
     dfloop = plugin_source.load_plugin('imaster').parse_master_file(masfile)
-    dfloop = dfloop.merge(abego, on=['pdb', 'chain']).dropna()
+    dfloop = dfloop.merge(abego, on=['pdb', 'chain']).merge(fragfiles, on=['pdb', 'chain']).dropna()
     dfloop[['abego', 'loop', 'loop_length']] = dfloop.apply(cutter, axis=1, result_type='expand')
     dfloop = dfloop.iloc[:top_loops]
     dfloop['length_count'] = dfloop.loop_length.map(dfloop.loop_length.value_counts())

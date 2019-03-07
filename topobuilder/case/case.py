@@ -99,6 +99,24 @@ class Case( object ):
         return tuple(out)
 
     @property
+    def connectivity_len( self ) -> Tuple[Tuple[int]]:
+        """Returns the lengths of the secondary structures in the order of each connectivity.
+
+        :return: :class:`tuple`
+        """
+        if 'connectivity' not in self:
+            return [[]]
+        else:
+            c = self.cast_absolute()
+            lengths = []
+            for tplg in c['topology.connectivity']:
+                thislen = []
+                for sse in tplg:
+                    thislen.append(c.get_sse_by_id(sse)['length'])
+                lengths.append(thislen)
+            return lengths
+
+    @property
     def center_shape( self ) -> Dict:
         """Returns the limit positions for each layer and in total, taking
         only into account the center of each sse.
@@ -185,13 +203,28 @@ class Case( object ):
         return result
 
     @property
+    def main_path( self ) -> Path:
+        """Main :class:`Path` for the current project.
+
+        :return: :class:`Path`
+        """
+        return Path(os.path.join(*self.name.split('_')))
+
+    @property
+    def undirected_path( self ) -> Path:
+        """:class:`Path` to the undirected sketch.
+
+        :return: :class:`Path`
+        """
+        return Path(os.path.join(self.main_path, 'architecture'))
+
+    @property
     def connectivities_paths( self ) -> Tuple[Path]:
         """Returns a list with the expected :class:`Path` for each.
 
         :return: :class:`tuple` of :class:`Path`
         """
-        name = os.path.join(*self.name.split('_'))
-        return tuple([Path(os.path.join(name, 'connectivity', x)) for x in self.connectivities_str])
+        return tuple([Path(os.path.join(self.main_path, 'connectivity', x)) for x in self.connectivities_str])
 
     @property
     def is_absolute( self ) -> bool:
@@ -411,6 +444,12 @@ class Case( object ):
         for i, cn in enumerate(self['topology.connectivity']):
             corrections = {}
             c = Case(self.data)
+            if c.is_reoriented:
+                if c.connectivity_count == 1:
+                    results.append(c)
+                    continue
+                else:
+                    raise CaseLogicError('The case has multiple connectivities but its labeled as oriented?')
             c['topology']['connectivity'] = [self['topology.connectivity'][i]]
             for turn in c['topology.connectivity'][0][1::2]:
                 corrections.setdefault(turn, {'tilt': {'x': 180}})
@@ -807,5 +846,10 @@ class CaseOverwriteError( CaseError ):
 
 
 class CaseIncompleteError( CaseError ):
-    """Errors raise when trying to execute a process without enough information
+    """Errors raised when trying to execute a process without enough information
+    """
+
+
+class CaseLogicError( CaseError ):
+    """Errors raised when there are incoherent :class:`.Case conditions`
     """

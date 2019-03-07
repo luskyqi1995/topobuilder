@@ -43,7 +43,6 @@ setup(
         'Operating System :: MacOS',
         'Operating System :: Unix',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
-        'Topic :: Scientific/Engineering :: Visualization',
     ],
 
     project_urls={
@@ -56,7 +55,7 @@ setup(
     keywords='development',
 
     install_requires=['numpy', 'scipy', 'networkx', 'svgwrite', 'transforms3d', 'bottle',
-                      'marshmallow', 'pyyaml', 'pluginbase', 'libconfig>=0.9'],
+                      'marshmallow', 'pyyaml', 'pluginbase', 'libconfig>=0.9', 'rstoolbox'],
 
     packages=find_packages(exclude=['docs', 'demo', 'sphinx-docs']),
     include_package_data=True,

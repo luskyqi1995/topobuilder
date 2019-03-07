@@ -8,3 +8,4 @@ bottle
 marshmallow >= 3.0
 pyyaml
 pluginbase
+rstoolbox

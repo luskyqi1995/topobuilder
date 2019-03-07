@@ -60,9 +60,11 @@ def case_apply( case: Case, pds_list: List[str] ) -> str:
         raise ValueError('Interactive MASTER smoothing can only be applied to one connectivity.')
     if not case['configuration.reoriented'] and case.connectivity_count == 1:
         case = case.cast_absolute().apply_topologies()[0]
+
     # Find steps: Tops we will submit 2-layer searches
     steps = get_steps([x[-1] == 'E' for x in case.architecture_str.split('.')])
-    print(steps)
+
+    # Work by layers
 
 
     # Make slurm file template
