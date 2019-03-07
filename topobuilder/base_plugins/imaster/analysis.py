@@ -10,6 +10,7 @@
 from typing import Optional, List, TextIO, Tuple
 from operator import itemgetter
 from ast import literal_eval
+from pathlib import Path
 import os
 import math
 import sys
@@ -30,7 +31,8 @@ except ImportError:
     from core import core
 
 
-__all__ = ['geometric_analysis', 'geometric_properties', 'parse_master_file', 'get_steps']
+__all__ = ['geometric_analysis', 'geometric_stats', 'geometric_properties',
+           'parse_master_file', 'get_steps']
 
 
 def get_steps( blist: List[bool] ) -> List[Tuple[int]]:
@@ -83,6 +85,46 @@ def geometric_analysis( masterdf: pd.DataFrame,
     else:
         wdf = masterdf
     return wdf
+
+
+def geometric_stats( filename: str,
+                     selections: Optional[List] = None,
+                     directionality: Optional[str] = None,
+                     selection: Optional[str] = None
+                     ) -> pd.DataFrame:
+    """
+    """
+    df = pd.DataFrame([x.resolve() for x in Path(filename).glob('*.pdb')], columns=['pdb_path'])
+    selection = literal_eval(selection)
+    pymol = None
+
+    def execute( row ):
+        nonlocal pymol
+        # 1. Download file
+        pdb3d = SBIstr.PDB(row['pdb_pagh'], format='pdb', clean=True,
+                           dehydrate=True, hetatms=False)
+        pdb3d = pdb3d['AtomType:CA']
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.write('  Structure {0} contains {1} residues.\n'.format(row['pdb'], pdb3d.residue_count))
+        # 2. Get pieces
+        nonlocal selection
+        pieces = make_pieces(pdb3d, selection, pymol)
+        # 3. Get Vectors
+        nonlocal directionality
+        vectors = make_vectors(pieces, directionality, pymol)
+        # 4. Get Plane
+        nonlocal selections
+        planes = make_planes(pieces, selections, pymol)
+        # 5. Vectors vs. planes
+        angles = make_angles(planes, vectors)
+        # 6. Points vs. planes
+        points = make_distances(planes, vectors)
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.flush()
+        return [row['pdb_path'], vectors, planes, angles, points]
+
+    df[['pdb_path', 'vectors', 'planes', 'angles', 'points']] = df.apply(execute, axis=1, result_type='expand')
+    return df
 
 
 def geometric_properties( masterdf: pd.DataFrame,

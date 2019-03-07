@@ -43,6 +43,7 @@ def apply( cases: List[Case],
            loop_range: int = 3,
            top_loops: int = 20,
            harpins_2: bool = True,
+           rmsd_cut: float = 5.0,
            **kwargs ) -> List[Case]:
     """Use MASTER to cover the transitions between secondary structures.
 
@@ -77,7 +78,7 @@ def apply( cases: List[Case],
     # Execute for each case
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('loop_fragments', [])
-        cases[i] = case_apply(case, database, loop_range, top_loops, abegodata, harpins_2, fragfiles)
+        cases[i] = case_apply(case, database, loop_range, top_loops, rmsd_cut, abegodata, harpins_2, fragfiles)
         cases[i].set_protocol_done(prtid)
 
     if tempdb:
@@ -90,6 +91,7 @@ def case_apply( case: Case,
                 pds_list: Path,
                 loop_range: int,
                 top_loops: int,
+                rmsd_cut: float,
                 abego: pd.DataFrame,
                 harpins_2: bool,
                 fragfiles: pd.DataFrame ) -> str:
@@ -137,15 +139,19 @@ def case_apply( case: Case,
             Mdis, mdis = get_loop_length(sse1, sse2, loop_step, loop_range)
 
             # 5. Run master
-            execute_master(outfile, pds_list, mdis, Mdis)
-
+            execute_master_fixedgap(outfile, pds_list, mdis, Mdis, rmsd_cut)
+            continue
             # 6. Minimize master data (pick top_loopsx3 lines to read and minimize the files)
             minimize_master_file(masfile, top_loops, 3)
 
         # 7. Retrieve master data
         dfloop = process_master_data(masfile, sse1_name, sse2_name, abego, fragfiles, top_loops, is_hairpin and harpins_2)
+        sse1l, loopl, sse2l = lengths[i], dfloop['loop_length'].values[0], lengths[i + 1]
+        total_len = sse1l + loopl + sse2l
+        end_edge = total_len + start - 1
         if TBcore.get_option('system', 'debug'):
-            sys.stdout.write(dfloop.to_string())
+            sys.stdout.write(dfloop.to_string() + '\n')
+            sys.stdout.write('INI: {}; END: {}; SSE1: {}; LOOP: {}; SSE2: {}\n'.format(start, end_edge, sse1l, loopl, sse2l))
 
         # 8. Make Fragments
 
@@ -158,6 +164,7 @@ def case_apply( case: Case,
         case.data['metadata']['loop_fragments'].append({'length': dfloop.iloc[0].values[0],
                                                         'abego': list(dfloop['abego'].values),
                                                         'fragfiles': [str(file3.resolve()), str(file9.resolve())]})
+        start = total_len + start
 
     return case
 
@@ -233,23 +240,23 @@ def get_loop_length(sse1: PDB, sse2: PDB, loop_step: int, loop_range: int) -> Tu
     return max(distance), min(distance)
 
 
-def execute_master(outfile: Path, pds_list: Path, mdis: int, Mdis: int):
+def execute_master_fixedgap(outfile: Path, pds_list: Path, mdis: int, Mdis: int, rmsd_cut: float):
     """
     """
     createPDS = core.get_option('master', 'create')
-    createbash = '{0} −−type query −−pdb {1} --pds {2}'
+    createbash = '{0} --type query --pdb {1} --pds {2} > /dev/null'
     master = core.get_option('master', 'master')
-    masterbash = '{0} −−query {1} −−targetList {2} −−rmsdCut 5 −−matchOut {3} --gapLen {4}-{5}'
+    masterbash = '{0} --query {1} --targetList {2} --rmsdCut {6} --matchOut {3} --gapLen {4}-{5} > /dev/null'
 
     createcmd = shlex.split(createbash.format(createPDS, outfile, outfile.with_suffix('.pds')))
     mastercmd = shlex.split(masterbash.format(master, outfile.with_suffix('.pds'),
-                                              pds_list, outfile.with_suffix('.master'), mdis, Mdis))
+                                              pds_list, outfile.with_suffix('.master'), mdis, Mdis, rmsd_cut))
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(createcmd)))
-    run(createcmd)
+    #run(createcmd)
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(mastercmd)))
-    run(mastercmd)
+    #run(mastercmd)
 
 
 def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ):
@@ -294,14 +301,14 @@ def process_master_data( masfile: Path,
         return row['abego'][match[0][0]: match[1][1] + 1], loop, len(loop)
 
     dfloop = plugin_source.load_plugin('imaster').parse_master_file(masfile)
-    dfloop = dfloop.merge(abego, on=['pdb', 'chain']).merge(fragfiles, on=['pdb', 'chain']).dropna()
+    dfloop = dfloop.merge(abego, on=['pdb', 'chain']).dropna()#.merge(fragfiles, on=['pdb', 'chain']).dropna()
     dfloop[['abego', 'loop', 'loop_length']] = dfloop.apply(cutter, axis=1, result_type='expand')
     dfloop = dfloop.iloc[:top_loops]
     dfloop['length_count'] = dfloop.loop_length.map(dfloop.loop_length.value_counts())
     finaldf = dfloop.drop_duplicates(['loop'])
 
     pick = 0
-    if hairpin and 2 in finaldf['loop_length']:
+    if hairpin and 2 in finaldf['loop_length'].values:
         pick = 2
     else:
         pick = finaldf[finaldf['length_count'] == finaldf['length_count'].max()]['loop_length'].min()

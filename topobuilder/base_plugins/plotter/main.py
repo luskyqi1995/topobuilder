@@ -28,6 +28,7 @@ _PLT_TYPES_ = ['sketchXZ', 'sketchXY']
 def apply( cases: List[Case],
            prtid: int,
            outfile: Optional[Union[str, Path]] = None,
+           prefix: Optional[str] = None,
            plot_types: Optional[List[str]] = None,
            **kwargs ) -> List[Case]:
     """Generate visual representations of the Case.
@@ -50,7 +51,8 @@ def apply( cases: List[Case],
 
     for ptype in plot_types:
         if outfile.is_dir():
-            thisoutfile = outfile.joinpath(".".join([str(os.getppid()), '{:02d}'.format(prtid), ptype + outformat]))
+            prefix = prefix if prefix is not None else ".".join([str(os.getppid()), '{:02d}'.format(prtid)])
+            thisoutfile = outfile.joinpath(".".join([prefix, ptype + outformat]))
         else:
             thisoutfile = Path(str(outfile) + '.' + ptype + outformat)
         thisoutfile.parent.mkdir(parents=True, exist_ok=True)

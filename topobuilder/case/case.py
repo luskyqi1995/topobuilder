@@ -660,6 +660,40 @@ def lc_yalign( corrections: Dict, layer: List[Dict], yalign: str, case: Case ) -
 def lc_zcurve( corrections: Dict, layer: List[Dict], zcurve: float ) -> Dict:
     """
     """
+    def define_circle(p1, p2, p3):
+        """Returns the center and radius of the circle passing the given 3 points.
+        In case the 3 points form a line, returns (None, infinity).
+        """
+        temp = p2[0] * p2[0] + p2[1] * p2[1]
+        bc = (p1[0] * p1[0] + p1[1] * p1[1] - temp) / 2
+        cd = (temp - p3[0] * p3[0] - p3[1] * p3[1]) / 2
+        det = (p1[0] - p2[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p2[1])
+
+        if abs(det) < 1.0e-6:
+            return (None, np.inf)
+
+        # Center of circle
+        cx = (bc * (p2[1] - p3[1]) - cd * (p1[1] - p2[1])) / det
+        cy = ((p1[0] - p2[0]) * cd - (p2[0] - p3[0]) * bc) / det
+
+        radius = np.sqrt((cx - p1[0])**2 + (cy - p1[1])**2)
+        return ((cx, cy), radius)
+
+    def angle_points(a, b, c):
+        ba = np.asarray(a) - np.asarray(b)
+        bc = np.asarray(c) - np.asarray(b)
+
+        cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+        return np.arccos(cosine_angle)
+
+    def point_on_circle(center, radius, angle):
+        """Finding the x, y coordinates on circle, based on given angle
+        """
+        x = center[0] + (radius * np.cos(angle))
+        y = center[1] + (radius * np.sin(angle))
+
+        return x, y
+
     # Do not apply when (A) there is less than SSE or (B) curve is 0 (default)
     if len(layer) <= 2 or zcurve == 0:
         return corrections
@@ -674,20 +708,69 @@ def lc_zcurve( corrections: Dict, layer: List[Dict], zcurve: float ) -> Dict:
     centerEND[-1] += zcurve
     midEND[-1] -= zcurve
     points = np.asarray([centerINI, midEND, centerEND])
-    # get x and y vectors
-    x = points[:, 0]
-    y = points[:, 1]
+    center, radius = define_circle(*points)
 
-    # calculate polynomial
-    z = np.polyfit(x, y, 2)
-    f = np.poly1d(z)
+    N = len(layer)
+    point_0 = point_on_circle(center, radius, 0)
+    leftmost_angle = -angle_points(points[0], center, point_0)
+    rightmost_angle = -angle_points(points[-1], center, point_0)
+    step_angle = -(leftmost_angle - rightmost_angle) / (N - 1)
+
+    points = []
+    for x in range(N):
+        points.append(point_on_circle(center, radius, leftmost_angle + (step_angle * x)))
 
     for i, sse in enumerate(layer):
         corrections.setdefault(sse['id'], {}).setdefault('coordinates', {}).setdefault('z', 0)
-        currentX = sse['coordinates']['x']
-        corrections[sse['id']]['coordinates']['z'] += np.around(f(currentX), decimals=3)
+        corrections[sse['id']]['coordinates'].setdefault('x', 0)
+        corrections[sse['id']]['coordinates']['z'] += points[i][1]
+        if i == 0 or i == len(layer) - 1:
+            continue
+        corrections[sse['id']]['coordinates']['x'] += points[i][0] - sse['coordinates']['x']
+
+    # # get x and y vectors
+    # x = points[:, 0]
+    # y = points[:, 1]
+    #
+    # # calculate polynomial
+    # z = np.polyfit(x, y, 2)
+    # f = np.poly1d(z)
+    #
+    # for i, sse in enumerate(layer):
+    #     corrections.setdefault(sse['id'], {}).setdefault('coordinates', {}).setdefault('z', 0)
+    #     currentX = sse['coordinates']['x']
+    #     corrections[sse['id']]['coordinates']['z'] += np.around(f(currentX), decimals=3)
 
     return corrections
+
+    # # Do not apply when (A) there is less than SSE or (B) curve is 0 (default)
+    # if len(layer) <= 2 or zcurve == 0:
+    #     return corrections
+    #
+    # # Create curve guiding points
+    # centerINI = layer[0]['coordinates']
+    # centerINI = [centerINI['x'], centerINI['z']]
+    # centerEND = layer[-1]['coordinates']
+    # centerEND = [centerEND['x'], centerEND['z']]
+    # midEND = (np.asarray(centerEND) - np.asarray(centerINI)) / 2
+    # centerINI[-1] += zcurve
+    # centerEND[-1] += zcurve
+    # midEND[-1] -= zcurve
+    # points = np.asarray([centerINI, midEND, centerEND])
+    # # get x and y vectors
+    # x = points[:, 0]
+    # y = points[:, 1]
+    #
+    # # calculate polynomial
+    # z = np.polyfit(x, y, 2)
+    # f = np.poly1d(z)
+    #
+    # for i, sse in enumerate(layer):
+    #     corrections.setdefault(sse['id'], {}).setdefault('coordinates', {}).setdefault('z', 0)
+    #     currentX = sse['coordinates']['x']
+    #     corrections[sse['id']]['coordinates']['z'] += np.around(f(currentX), decimals=3)
+    #
+    # return corrections
 
 
 def sse_corrections( corrections: dict, case: Case ) -> Case:
