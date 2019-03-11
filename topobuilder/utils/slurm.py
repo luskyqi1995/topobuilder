@@ -34,7 +34,8 @@ def submit_slurm( slurm_file: Union[Path, str],
                           .joinpath('slurm_control.{}.sh'.format(os.getpid())))
     condition_file = control_slurm_file(slurm_control_file, condition_file)
 
-    submit_nowait_slurm(slurm_control_file, 'afterany', submit_nowait_slurm(slurm_file))
+    main_id = submit_nowait_slurm(slurm_file)
+    submit_nowait_slurm(slurm_control_file, 'afterany', main_id)
 
     wait_for(condition_file)
 
@@ -49,11 +50,11 @@ def submit_nowait_slurm( slurm_file: Union[Path, str],
     if dependency_mode is not None and dependency_id is not None:
         command.append('--depend={}:{}'.format(dependency_mode, dependency_id))
     command.append('--parsable')
-    command.append(slurm_file)
+    command.append(str(slurm_file))
     p = subprocess.run(command, stdout=subprocess.PIPE)
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write(' '.join(command))
-    return int(str(p.stdout).strip())
+        sys.stdout.write(' '.join(command) + '\n')
+    return int(str(p.stdout.decode("utf-8")).strip())
 
 
 def wait_for( condition_file: Optional[Union[Path, str]] ):
@@ -61,12 +62,12 @@ def wait_for( condition_file: Optional[Union[Path, str]] ):
     """
     waiting_time = 0
     while not Path(condition_file).is_file():
-        time.spleep(60)
+        time.sleep(60)
         waiting_time += 1
 
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Total waiting time: {}h:{}m'.format(math.floor(waiting_time / 60),
-                                                              waiting_time % 60))
+        sys.stdout.write('Total waiting time: {}h:{}m\n'.format(math.floor(waiting_time / 60),
+                                                                waiting_time % 60))
 
 
 def control_slurm_file( slurm_file: Union[Path, str],
@@ -85,13 +86,13 @@ def control_slurm_file( slurm_file: Union[Path, str],
     """
     header = slurm_header(0, 2046)
     condition_file = condition_file if condition_file is not None else 'touch_control.{}'.format(os.getpid())
-    condition_file = Path(tempfile.mkdtemp('slurm_control')).joinpath(condition_file)
+    condition_file = Path().cwd().joinpath(condition_file)
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('A SLURM control file will be generated at {}'.format(condition_file))
+        sys.stdout.write('A SLURM control file will be generated at {}\n'.format(condition_file))
 
     with open(slurm_file, 'w') as fd:
         fd.write(header + '\n\n')
-        fd.write('touch {}\n'.format(condition_file.resolve()))
+        fd.write('echo \'finished\' > {}\n'.format(condition_file.resolve()))
     return condition_file
 
 
