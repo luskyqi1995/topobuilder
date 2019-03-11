@@ -118,6 +118,8 @@ class ConfigurationSchema( Schema ):
                               metadata='Relative vs. absolute coordinates.')
     reoriented = fields.Boolean(default=False,
                                 metadata='Has connectivity directions been applied?')
+    flip_first = fields.Boolean(default=False,
+                                metadata='When applying topologies, start by flipping the first SSE.')
     protocols = fields.List(fields.Dict, default={}, metadata='Pipeline of protocols to run.')
     comments = fields.List(fields.String, default=[__version__],
                            metadata='Relative vs. absolute coordinates.')

@@ -244,6 +244,25 @@ class Case( object ):
             return cr
         return False
 
+    @property
+    def flip_first( self ) -> bool:
+        """Is the first SSE going to be flipped on topology application?
+
+        :return: :class:`bool`
+        """
+        return self.cast_absolute()['configuration.flip_first']
+
+    def switch_flip_first_to( self, value ) -> C:
+        """Change the rule on which SSE to start flipping when applying a topology.
+
+        :param bool value: Values to assign to whether or not to flip the first SSE.
+
+        :return: :class:`.Case`
+        """
+        c = Case(self)
+        c.data['configuration']['flip_first'] = value
+        return c
+
     def get_sse_by_id( self, sse_id: str ) -> Dict:
         """Returns the data corresponding to a given secondary structre according to
         its identifier.
@@ -451,7 +470,7 @@ class Case( object ):
                 else:
                     raise CaseLogicError('The case has multiple connectivities but its labeled as oriented?')
             c['topology']['connectivity'] = [self['topology.connectivity'][i]]
-            for turn in c['topology.connectivity'][0][1::2]:
+            for turn in c['topology.connectivity'][0][1 if not c.flip_first else 0::2]:
                 corrections.setdefault(turn, {'tilt': {'x': 180}})
             results.append(c.apply_corrections(corrections))
             results[-1].data['configuration']['reoriented'] = True

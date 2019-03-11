@@ -14,6 +14,7 @@ from typing import List, Tuple, Dict
 import math
 from tempfile import NamedTemporaryFile
 import shlex
+from ast import literal_eval
 from subprocess import run
 import gzip
 import itertools
@@ -24,13 +25,12 @@ import pandas as pd
 from pandas.compat import StringIO
 from SBI.structure import PDB, PDBFrame, ChainFrame
 import SBI.structure.geometry as SBIgeo
-import seaborn as sns
-import matplotlib.pyplot as plt
-import rstoolbox
+from rstoolbox.io import parse_rosetta_fragments, write_rosetta_fragments
 
 # This Library
 from topobuilder.case import Case
 import topobuilder.core as TBcore
+import topobuilder.utils as TButil
 from topobuilder import plugin_source
 from .core import core
 
@@ -100,10 +100,10 @@ def case_apply( case: Case,
     # Loop MASTER is only applied to a Case with one single connectivity and already reoriented
     if case.connectivity_count > 1:
         raise ValueError('Loop MASTER can only be applied to one connectivity.')
-    if not case['configuration.reoriented'] and case.connectivity_count == 1:
-        # We will need the coordinates of the secondary structures to execute this one
-        # This will already cast it to absolute
-        case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True, overwrite=False)
+
+    # We will need the coordinates of the secondary structures to execute this one
+    # This will already cast it to absolute
+    case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True, overwrite=False)
 
     # Generate the folder tree for a single connectivity.
     folders = case.connectivities_paths[0]
@@ -149,36 +149,71 @@ def case_apply( case: Case,
         sse1l, loopl, sse2l = lengths[i], dfloop['loop_length'].values[0], lengths[i + 1]
         total_len = sse1l + loopl + sse2l
         end_edge = total_len + start - 1
+        edges = {'ini': int(start), 'end': int(end_edge), 'sse1': int(sse1l), 'loop': int(loopl), 'sse2': int(sse2l)}
         if TBcore.get_option('system', 'debug'):
+            sys.stdout.write('\nINI: {}; END: {}; SSE1: {}; LOOP: {}; SSE2: {}\n\n'.format(start, end_edge, sse1l, loopl, sse2l))
             sys.stdout.write(dfloop.to_string() + '\n')
-            sys.stdout.write('INI: {}; END: {}; SSE1: {}; LOOP: {}; SSE2: {}\n'.format(start, end_edge, sse1l, loopl, sse2l))
 
         # 8. Make Fragments
+        loop_data = make_fragment_files(dfloop, edges, masfile)
+        case.data['metadata']['loop_fragments'].append(loop_data)
 
-
-        # 8. Make files
-        file3 = outfile.with_suffix('.3mers')
-        file9 = outfile.with_suffix('.9mers')
-
-        # 9. Attach files
-        case.data['metadata']['loop_fragments'].append({'length': dfloop.iloc[0].values[0],
-                                                        'abego': list(dfloop['abego'].values),
-                                                        'fragfiles': [str(file3.resolve()), str(file9.resolve())]})
-        start = total_len + start
+        start += (sse1l + loopl)
 
     return case
 
 
-def make_fragment_files( dfloop: pd.DataFrame, fragfiles: pd.DataFrame ) -> List[Dict]:
+def make_fragment_files( dfloop: pd.DataFrame, edges: Dict, masfile: Path ) -> Dict:
     """
     """
-    pass
+    data = {'loop_length': int(dfloop.iloc[0].values[0]), 'abego': list(dfloop['loop'].values),
+            'edges': edges, 'fragfiles': []}
+
+    dfs3 = []
+    dfs9 = []
+    sample = math.ceil(200 / dfloop.shape[0])
+    for i, row in dfloop.iterrows():
+        # Remember: MASTER match starts with 0!
+        dfs3.append((parse_rosetta_fragments(row['3mers'], source='{}_{}'.format(row['pdb'], row['chain']))
+                     .slice_region(row['match'][0][0] + 1, row['match'][1][1] + 1).sample_top_neighbors(sample)
+                     .renumber(edges['ini']).top_limit(edges['end'])))
+        dfs9.append((parse_rosetta_fragments(row['9mers'], source='{}_{}'.format(row['pdb'], row['chain']))
+                     .slice_region(row['match'][0][0] + 1, row['match'][1][1] + 1).sample_top_neighbors(sample)
+                     .renumber(edges['ini']).top_limit(edges['end'])))
+
+    # Merge Fragments
+    dfs3all = dfs3[0]
+    dfs9all = dfs9[0]
+    for i in range(1, len(dfs3)):
+        dfs3all = dfs3all.add_fragments(dfs3[i], ini=edges['ini'], how='append')
+        dfs9all = dfs9all.add_fragments(dfs9[i], ini=edges['ini'], how='append')
+    dfs3all = dfs3all.sample_top_neighbors(200)
+    dfs9all = dfs9all.sample_top_neighbors(200)
+
+    if TBcore.get_option('system', 'debug'):
+        sys.stdout.write('Writing 3mers fragfile\n')
+    data['fragfiles'].append(write_rosetta_fragments(dfs3all, prefix=str(masfile.with_suffix('')), strict=True))
+    if TBcore.get_option('system', 'debug'):
+        sys.stdout.write('3mers fragfile: {}\n'.format(data['fragfiles'][-1]))
+        sys.stdout.write('Writing 9mers fragfile\n')
+    data['fragfiles'].append(write_rosetta_fragments(dfs9all, prefix=str(masfile.with_suffix('')), strict=True))
+    if TBcore.get_option('system', 'debug'):
+        sys.stdout.write('9mers fragfile: {}\n'.format(data['fragfiles'][-1]))
+
+    dfs3all.to_csv(data['fragfiles'][0] + '.csv.gz', index=False)
+    dfs9all.to_csv(data['fragfiles'][1] + '.csv.gz', index=False)
+    imageprefix = masfile.with_suffix('.fragprofile')
+    TButil.plot_fragment_templates(dfs3all, dfs9all, imageprefix)
+
+    return data
 
 
 def get_fragfiles():
     """
     """
     fragpath = Path(core.get_option('master', 'fragments'))
+    if TBcore.get_option('system', 'debug'):
+        sys.stdout.write('Listing available fragment files at: {}\n'.format(fragpath.name))
     if not fragpath.is_dir():
         raise IOError('MASTER fragments folder cannot be found.')
     return pd.DataFrame([(x.name[:4], x.name[5:6], x, y) for x, y in zip(sorted(fragpath.glob('*/*3mers.gz')),
@@ -193,16 +228,18 @@ def get_abegos():
     abegos = Path(abegos)
     if not abegos.is_file():
         raise IOError('The ABEGO fasta file has to be provided')
-    else:
-        doopen = gzip.open if abegos.suffix == '.gz' else open
-        abegodata = []
-        with doopen(abegos, 'rt') as fd:
-            for line1, line2 in itertools.zip_longest(*[fd] * 2):
-                line2 = line2 if len(line2.strip()) != 0 else 'NON\n'
-                line1 = line1.strip().lstrip('>').split('_')
-                abegodata.append('{},{},{}'.format(line1[0], line1[1], line2))
-        abegodata = pd.read_csv(StringIO(''.join(abegodata)), names=['pdb', 'chain', 'abego'], header=None)
-        abegodata = abegodata[abegodata['abego'] != 'NON']
+
+    if TBcore.get_option('system', 'debug'):
+        sys.stdout.write('Loading ABEGO data from: {}\n'.format(abegos.name))
+    doopen = gzip.open if abegos.suffix == '.gz' else open
+    abegodata = []
+    with doopen(abegos, 'rt') as fd:
+        for line1, line2 in itertools.zip_longest(*[fd] * 2):
+            line2 = line2 if len(line2.strip()) != 0 else 'NON\n'
+            line1 = line1.strip().lstrip('>').split('_')
+            abegodata.append('{},{},{}'.format(line1[0], line1[1], line2))
+    abegodata = pd.read_csv(StringIO(''.join(abegodata)), names=['pdb', 'chain', 'abego'], header=None)
+    abegodata = abegodata[abegodata['abego'] != 'NON']
 
     return abegodata
 
@@ -300,12 +337,18 @@ def process_master_data( masfile: Path,
         loop = row['abego'][match[0][1] + 1: match[1][0]]
         return row['abego'][match[0][0]: match[1][1] + 1], loop, len(loop)
 
+    if masfile.with_suffix('.csv').is_file():
+        df = pd.read_csv(masfile.with_suffix('.csv'))
+        df['match'] = df['match'].apply(literal_eval)
+        return df
+
     dfloop = plugin_source.load_plugin('imaster').parse_master_file(masfile)
-    dfloop = dfloop.merge(abego, on=['pdb', 'chain']).dropna()#.merge(fragfiles, on=['pdb', 'chain']).dropna()
+    dfloop = dfloop.merge(abego, on=['pdb', 'chain']).merge(fragfiles, on=['pdb', 'chain']).dropna()
     dfloop[['abego', 'loop', 'loop_length']] = dfloop.apply(cutter, axis=1, result_type='expand')
     dfloop = dfloop.iloc[:top_loops]
     dfloop['length_count'] = dfloop.loop_length.map(dfloop.loop_length.value_counts())
-    finaldf = dfloop.drop_duplicates(['loop'])
+    dfloop.drop(columns=['pds_path']).to_csv(masfile.with_suffix('.all.csv'), index=False)
+    finaldf = dfloop.sort_values('rmsd').drop_duplicates(['loop'])
 
     pick = 0
     if hairpin and 2 in finaldf['loop_length'].values:
@@ -314,16 +357,8 @@ def process_master_data( masfile: Path,
         pick = finaldf[finaldf['length_count'] == finaldf['length_count'].max()]['loop_length'].min()
     finaldf = finaldf[finaldf['loop_length'] == pick]
 
-    fig = plt.figure()
-    ax = plt.subplot2grid((1, 1), (0, 0), fig=fig)
-    sns.countplot(x='loop_length', data=dfloop, ax=ax, palette="PRGn")
-    cnt = dfloop[dfloop['loop_length'] == pick]['length_count'].values[0]
-    pick = [int(x.get_text()) for x in ax.get_xticklabels()].index(pick)
-    ax.plot(pick, cnt, marker=11, color='black')
-    ax.set_title('loop {} <-> {}'.format(name1, name2))
-    imagename = masfile.with_suffix(TBcore.get_option('system', 'image'))
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('-> loop image summary at {}\n'.format(imagename))
-    plt.savefig(imagename, dpi=300)
+    TButil.plot_loop_length_distribution(dfloop, pick, masfile.with_suffix(''), 'loop {} <-> {}'.format(name1, name2))
 
-    return finaldf
+    df = finaldf.drop(columns=['pds_path'])
+    df.to_csv(masfile.with_suffix('.csv'), index=False)
+    return df
