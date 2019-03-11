@@ -7,6 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
+import os
 
 # External Libraries
 from libconfig import Config
@@ -20,6 +21,11 @@ with core.ifndef():
     core.register_option('system', 'debug', False, 'bool', 'Makes topobuilder VERY chatty.')
     core.register_option('system', 'overwrite', False, 'bool', 'Overwrite existing files.')
     core.register_option('system', 'image', '.png', 'string', 'Format to output images', ['.png', '.svg'])
+
+    core.register_option('slurm', 'use', True, 'bool', 'Use SLURM cluster submission system.')
+    core.register_option('slurm', 'partition', 'serial', 'string', 'Name of the available SLURM partition.')
+    core.register_option('slurm', 'array', 700, 'int', 'Into how may nodes is the search splitted.')
+    core.register_option('slurm', 'logs', os.getcwd(), 'path_in', 'Path on were to dump the log files.')
 
     # There are different levels of configuration files that can be picked.
     # If any configuration file is set up, the priority goes as follows:
