@@ -114,7 +114,7 @@ def case_apply( case: Case,
         sys.stdout.write('Writing the RosettaScript file: {}\n'.format(ffd_file))
     with ffd_file.open('w') as fd:
         fd.write(ffd)
-    data['script'] = str(ffd_file)
+    data['script'] = ffd_file
     data['cmd'].append(data['script'])
 
     # Finish command
@@ -124,7 +124,7 @@ def case_apply( case: Case,
                'binary', '-out:mute', 'protocols.abinitio', 'protocols.moves', 'core.optimization']
 
     data['cmd'].extend(['-in:file:s', str(pdb_file), '-out:prefix', out_prefix,
-                        '-out:file:silent', str(outdir.joinpath(out_prefix)) +'.silent'])
+                        '-out:file:silent', str(outdir.joinpath(out_prefix)) + '.silent'])
     data['cmd'].extend(['-nstruct', str(nstruct)])
     data['cmd'].extend(commons)
 

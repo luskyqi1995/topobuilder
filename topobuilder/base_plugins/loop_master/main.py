@@ -18,7 +18,6 @@ from ast import literal_eval
 from subprocess import run
 import gzip
 import itertools
-import json
 
 
 # External Libraries

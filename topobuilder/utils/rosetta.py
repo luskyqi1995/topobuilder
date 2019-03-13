@@ -7,20 +7,12 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import sys
-import os
-import time
-import math
 import textwrap
-import tempfile
-from pathlib import Path
-from typing import Union, Optional, Tuple, List
-import subprocess
+from typing import Tuple, List
 
 # External Libraries
 
 # This Library
-import topobuilder.core as TBcore
 
 
 __all__ = ['funfoldes_script']

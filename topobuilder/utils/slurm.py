@@ -114,7 +114,7 @@ def slurm_header() -> str:
     }
 
     config['slurm_array'] = '' if config['slurm_array'] == 0 else "#SBATCH --array=1-{}\n".format(config['slurm_array'])
-    config['sublog'] = '' if config['slurm_array'] == 0  else config['sublog']
+    config['sublog'] = '' if config['slurm_array'] == 0 else config['sublog']
 
     if Path(config['logpath']).is_dir():
         config['logpath'] = str(Path(config['logpath']).resolve().joinpath('_output'))

@@ -515,7 +515,7 @@ class Case( object ):
                 crr = yaml.load(open(corrections))
             return Case(self.data).apply_corrections(crr)
 
-        # APPLY CONFIGURATION CORRECTIONS (before cast absolute is applied in layer_corrections)
+        # APPLY CONFIGURATION CORRECTIONS (before cast absolute is applied in layer_corrections)
         c = Case(self)
         c = configuration_corrections(corrections, c)
 
@@ -634,7 +634,7 @@ def configuration_corrections( corrections: dict, case: Case) -> Dict:
 
     cfg = case.data['configuration']
     for k in cr:
-        cfg.setdefault(k, cr[k])
+        cfg[k] = cr[k]
 
     schema = ConfigurationSchema()
     case.data['configuration'] = schema.dump(cfg)
