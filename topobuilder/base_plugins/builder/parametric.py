@@ -73,13 +73,13 @@ class ParametricStructure( object ):
         _MONO = pd.DataFrame(self._MONO).T
         for i, p in enumerate(points):
             coords = SBIgeo.rotate_degrees(_MONO.values, y=self._ROTATION * i)
-            # print('...')
-            # print(SBIgeo.rotate_degrees(_MONO.values, x=180, y=180))
-            # exit()
             coords = SBIgeo.translate(coords, p)
             self.pdb.append(coords)
         self.pdb = np.vstack(self.pdb)
+        # We want undirected structures to start always looking up
+        self.pdb = SBIgeo.rotate_degrees(self.pdb, x=180)
 
+        # Apply the case-defined placements for each structure
         if TBcore.get_option('system', 'debug'):
             sys.stdout.write('tilt: ' + str(self.desc['tilt']) + '\n')
             sys.stdout.write('move: ' + str(self.desc['coordinates']) + '\n')

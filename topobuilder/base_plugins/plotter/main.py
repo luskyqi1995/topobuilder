@@ -66,6 +66,6 @@ def apply( cases: List[Case],
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('Creating new image at: {}\n'.format(str(thisoutfile)))
 
-    for i, _ in enumerate(cases):
-        cases[i].set_protocol_done(prtid)
+    for i, case in enumerate(cases):
+        cases[i] = case.set_protocol_done(prtid)
     return cases

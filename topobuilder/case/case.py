@@ -15,6 +15,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Union, TypeVar
 from collections import OrderedDict
+from itertools import chain
 
 # External Libraries
 import numpy as np
@@ -27,7 +28,7 @@ from yaml.representer import SafeRepresenter
 
 # This Library
 from .schema import (CaseSchema, CaseError, TopologySchema, CoordinateSchema,
-                     StructureSchema, DistanceSchema)
+                     StructureSchema, DistanceSchema, ConfigurationSchema)
 
 __all__ = ['Case']
 
@@ -225,6 +226,24 @@ class Case( object ):
         :return: :class:`tuple` of :class:`Path`
         """
         return tuple([Path(os.path.join(self.main_path, 'connectivity', x)) for x in self.connectivities_str])
+
+    @property
+    def ordered_structures( self ) -> List[Dict]:
+        """Returns the secondary structures in order of connectivity.
+
+        :return: :func:`list` of :class:`dict`
+        """
+        c = self.cast_absolute()
+
+        if c.is_reoriented:
+            if c.connectivity_count != 1:
+                raise CaseLogicError('Ordered structures can only be obtained from single-connectivity cases.')
+            sse = []
+            for s in c.connectivities_str[0].split('.'):
+                sse.append(c.get_sse_by_id(s))
+            return sse
+        else:
+            return list(chain(*c['topology.architecture']))
 
     @property
     def is_absolute( self ) -> bool:
@@ -496,11 +515,15 @@ class Case( object ):
                 crr = yaml.load(open(corrections))
             return Case(self.data).apply_corrections(crr)
 
+        # APPLY CONFIGURATION CORRECTIONS (before cast absolute is applied in layer_corrections)
+        c = Case(self)
+        c = configuration_corrections(corrections, c)
+
         # APPLY LAYER CORRECTIONS
-        corrections = layer_corrections(corrections, self)
+        corrections = layer_corrections(corrections, c)
 
         # APPLY SSE CORRECTIONS
-        return sse_corrections(corrections, self)
+        return sse_corrections(corrections, c)
 
     def set_protocol_done( self, protocol_id: int ) -> C:
         """Label a protocol as executed.
@@ -592,6 +615,31 @@ class Case( object ):
         if not isinstance(value, Case):
             raise NotImplementedError()
         return self.data == value.data
+
+    def __len__( self ):
+        return int(np.sum(np.asarray(self.shape)))
+
+
+def configuration_corrections( corrections: dict, case: Case) -> Dict:
+    """Apply specific configuration-related changes to the :class:`.Case`.
+
+    :param corrections: Existing corrections.
+    :param case: Data to guide the corrections.
+
+    :return: Updated corrections.
+    """
+    cr = corrections.pop('configuration', None)
+    if cr is None:
+        return case
+
+    cfg = case.data['configuration']
+    for k in cr:
+        cfg.setdefault(k, cr[k])
+
+    schema = ConfigurationSchema()
+    case.data['configuration'] = schema.dump(cfg)
+
+    return case
 
 
 def layer_corrections( corrections: dict, case: Case) -> Dict:

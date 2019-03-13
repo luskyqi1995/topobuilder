@@ -25,8 +25,8 @@ import topobuilder.core as TBcore
 __all__ = ['plot_fragment_templates', 'plot_loop_length_distribution']
 
 
-def plot_fragment_templates( dfsmall: FragmentFrame,
-                             dflarge: FragmentFrame,
+def plot_fragment_templates( dfsmall: Union[FragmentFrame, pd.DataFrame],
+                             dflarge: Union[FragmentFrame, pd.DataFrame],
                              prefix: Union[Path, str],
                              write: bool = True
                              ) -> Tuple[plt.Figure, Path]:

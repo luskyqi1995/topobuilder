@@ -38,6 +38,6 @@ def apply( cases: List[Case],
         sn = copy.deepcopy(subnames)
         sn.insert(0, case.name)
         cases[i].data['configuration']['name'] = '_'.join(sn)
-        cases[i].set_protocol_done(prtid)
+        cases[i] = cases[i].set_protocol_done(prtid)
 
     return cases

@@ -48,7 +48,7 @@ def apply( cases: List[Case], prtid: int, **kwargs ) -> List[Case]:
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('corrections', [])
         cases[i].data['metadata']['corrections'].append(case_apply(case, pds_list))
-        cases[i].set_protocol_done(prtid)
+        cases[i] = cases[i].set_protocol_done(prtid)
     return cases
 
 

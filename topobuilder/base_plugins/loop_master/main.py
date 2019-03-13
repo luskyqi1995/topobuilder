@@ -18,6 +18,7 @@ from ast import literal_eval
 from subprocess import run
 import gzip
 import itertools
+import json
 
 
 # External Libraries
@@ -78,8 +79,9 @@ def apply( cases: List[Case],
     # Execute for each case
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('loop_fragments', [])
+        cases[i].data.setdefault('metadata', {}).setdefault('loop_lengths', [])
         cases[i] = case_apply(case, database, loop_range, top_loops, rmsd_cut, abegodata, harpins_2, fragfiles)
-        cases[i].set_protocol_done(prtid)
+        cases[i] = cases[i].set_protocol_done(prtid)
 
     if tempdb:
         os.unlink(f.name)
@@ -103,10 +105,11 @@ def case_apply( case: Case,
 
     # We will need the coordinates of the secondary structures to execute this one
     # This will already cast it to absolute
-    case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True, overwrite=False)
+    with TBcore.on_option_value('system', 'overwrite', False):
+        case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True)
 
     # Generate the folder tree for a single connectivity.
-    folders = case.connectivities_paths[0]
+    folders = case.connectivities_paths[0].joinpath('loop_master')
     folders.mkdir(parents=True, exist_ok=True)
 
     # Find steps: Each pair of secondary structure.
@@ -114,15 +117,23 @@ def case_apply( case: Case,
     steps = [it[i:i + 2] for i in range(0, len(it) - 1)]
     loop_step = case.cast_absolute()['configuration.defaults.distance.loop_step']
     lengths = case.connectivity_len[0]
-    print(lengths)
     start = 1
 
     for i, sse in enumerate(steps):
-        # 1. Make folders
+        # 1. Make folders and files
         wfolder = folders.joinpath('loop{:02d}'.format(i + 1))
         wfolder.mkdir(parents=True, exist_ok=True)
         outfile = wfolder.joinpath('loop_master.jump{:02d}.pdb'.format(i + 1))
         masfile = outfile.with_suffix('.master')
+        checkpoint = wfolder.joinpath('checkpoint.json')
+
+        # 2. Check if checkpoint exists, retrieve and skip
+        reload = TButil.checkpoint_in(checkpoint)
+        if reload is not None:
+            case.data['metadata']['loop_fragments'].append(reload)
+            case.data['metadata']['loop_lengths'].append(int(reload['edges']['loop']))
+            start += (int(reload['edges']['sse1']) + int(reload['edges']['loop']))
+            continue
 
         # 2. Check hairpin
         sse1 = case.get_sse_by_id(sse[0])
@@ -140,13 +151,13 @@ def case_apply( case: Case,
 
             # 5. Run master
             execute_master_fixedgap(outfile, pds_list, mdis, Mdis, rmsd_cut)
-            continue
+
             # 6. Minimize master data (pick top_loopsx3 lines to read and minimize the files)
             minimize_master_file(masfile, top_loops, 3)
 
         # 7. Retrieve master data
         dfloop = process_master_data(masfile, sse1_name, sse2_name, abego, fragfiles, top_loops, is_hairpin and harpins_2)
-        sse1l, loopl, sse2l = lengths[i], dfloop['loop_length'].values[0], lengths[i + 1]
+        sse1l, loopl, sse2l = lengths[i], int(dfloop['loop_length'].values[0]), lengths[i + 1]
         total_len = sse1l + loopl + sse2l
         end_edge = total_len + start - 1
         edges = {'ini': int(start), 'end': int(end_edge), 'sse1': int(sse1l), 'loop': int(loopl), 'sse2': int(sse2l)}
@@ -157,8 +168,12 @@ def case_apply( case: Case,
         # 8. Make Fragments
         loop_data = make_fragment_files(dfloop, edges, masfile)
         case.data['metadata']['loop_fragments'].append(loop_data)
+        case.data['metadata']['loop_lengths'].append(int(loopl))
 
         start += (sse1l + loopl)
+
+        # Checkpoint save
+        TButil.checkpoint_out(checkpoint, loop_data)
 
     return case
 
@@ -200,8 +215,10 @@ def make_fragment_files( dfloop: pd.DataFrame, edges: Dict, masfile: Path ) -> D
     if TBcore.get_option('system', 'debug'):
         sys.stdout.write('9mers fragfile: {}\n'.format(data['fragfiles'][-1]))
 
-    dfs3all.to_csv(data['fragfiles'][0] + '.csv.gz', index=False)
-    dfs9all.to_csv(data['fragfiles'][1] + '.csv.gz', index=False)
+    dfs3all.drop(columns=['pdb', 'frame', 'neighbors', 'neighbor',
+                          'aa', 'sse', 'phi', 'psi', 'omega']).to_csv(data['fragfiles'][0] + '.csv', index=False)
+    dfs9all.drop(columns=['pdb', 'frame', 'neighbors', 'neighbor',
+                          'aa', 'sse', 'phi', 'psi', 'omega']).to_csv(data['fragfiles'][1] + '.csv', index=False)
     imageprefix = masfile.with_suffix('.fragprofile')
     TButil.plot_fragment_templates(dfs3all, dfs9all, imageprefix)
 
@@ -290,10 +307,10 @@ def execute_master_fixedgap(outfile: Path, pds_list: Path, mdis: int, Mdis: int,
                                               pds_list, outfile.with_suffix('.master'), mdis, Mdis, rmsd_cut))
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(createcmd)))
-    #run(createcmd)
+    run(createcmd)
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(mastercmd)))
-    #run(mastercmd)
+    run(mastercmd)
 
 
 def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ):

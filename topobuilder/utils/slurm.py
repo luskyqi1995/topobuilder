@@ -23,7 +23,7 @@ import subprocess
 import topobuilder.core as TBcore
 
 
-__all__ = ['submit_slurm', 'submit_nowait_slurm']
+__all__ = ['slurm_header', 'submit_slurm', 'submit_nowait_slurm']
 
 
 def submit_slurm( slurm_file: Union[Path, str],
@@ -38,6 +38,7 @@ def submit_slurm( slurm_file: Union[Path, str],
     submit_nowait_slurm(slurm_control_file, 'afterany', main_id)
 
     wait_for(condition_file)
+    os.unlink(str(condition_file))
 
 
 def submit_nowait_slurm( slurm_file: Union[Path, str],
@@ -62,7 +63,7 @@ def wait_for( condition_file: Optional[Union[Path, str]] ):
     """
     waiting_time = 0
     while not Path(condition_file).is_file():
-        time.sleep(60)
+        time.sleep(30)
         waiting_time += 1
 
     if TBcore.get_option('system', 'verbose'):
@@ -96,26 +97,32 @@ def control_slurm_file( slurm_file: Union[Path, str],
     return condition_file
 
 
-def slurm_header( slurm_array: int,
-                  memory: Optional[int] = 4096
-                  ) -> str:
+def slurm_header() -> str:
     """
     """
-    partition = TBcore.get_option('slurm', 'partition')
-    logpath = TBcore.get_option('slurm', 'logs')
+    config = {
+        'slurm_array':     TBcore.get_option('slurm', 'array'),
+        'partition':       TBcore.get_option('slurm', 'partition'),
+        'logpath':         TBcore.get_option('slurm', 'logs'),
+        'memory':          TBcore.get_option('slurm', 'memory'),
+        'nodes':           TBcore.get_option('slurm', 'nodes'),
+        'time':            TBcore.get_option('slurm', 'time'),
+        'ntasks-per-node': TBcore.get_option('slurm', 'ntasks-per-node'),
+        'cpus-per-task':   TBcore.get_option('slurm', 'cpus-per-task')
+    }
 
-    slurm_array = "" if slurm_array == 0 else "#SBATCH --array=1-{2}\n".format(slurm_array)
+    config['slurm_array'] = "" if config['slurm_array'] == 0 else "#SBATCH --array=1-{}\n".format(config['slurm_array'])
 
-    if Path(logpath).is_dir():
-        logpath = Path(logpath).resolve().joinpath('output')
+    if Path(config['logpath']).is_dir():
+        config['logpath'] = str(Path(config['logpath']).resolve().joinpath('_output'))
     return textwrap.dedent("""\
         #!/bin/bash
-        #SBATCH --nodes 1
-        #SBATCH --partition={0}
-        #SBATCH --ntasks-per-node 1
-        #SBATCH --cpus-per-task 1
-        #SBATCH --mem {3}
-        #SBATCH --time 10:00:00
-        {2}#SBATCH --output={1}.%A.out
-        #SBATCH --error={1}.%A.err
-    """).format(partition, logpath, slurm_array, memory)
+        #SBATCH --nodes {nodes}
+        #SBATCH --partition={partition}
+        #SBATCH --ntasks-per-node {ntasks-per-node}
+        #SBATCH --cpus-per-task {cpus-per-task}
+        #SBATCH --mem {memory}
+        #SBATCH --time {time}
+        {slurm_array}#SBATCH --output={logpath}.%A.out
+        #SBATCH --error={logpath}.%A.err
+    """).format(**config)

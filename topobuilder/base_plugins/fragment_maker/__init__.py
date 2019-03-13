@@ -6,10 +6,4 @@
     Laboratory of Protein Design and Immunoengineering <lpdi.epfl.ch>
     Bruno Correia <bruno.correia@epfl.ch>
 """
-
-from .plot import *
-from .slurm import *
-from .pdb import *
-from .master import *
-from .rosetta import *
-from .checkpoint import *
+from .main import *

@@ -52,5 +52,5 @@ def apply( cases: List[Case],
                 sys.stdout.write('Applying correction: {0}\n'.format(c))
             kase = kase.apply_corrections(c)
         new_cases.append(kase)
-        new_cases[-1].set_protocol_done(prtid)
+        cases[-1] = new_cases[-1].set_protocol_done(prtid)
     return new_cases

@@ -52,8 +52,9 @@ def apply( cases: List[Case],
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Writing checkpoint file {} for {} case(s).\n'.format(ofile, len(cases)))
     with open(ofile, "w") as stream:
-        yaml.dump_all(cases, stream, Dumper=Dumper, default_flow_style=False)
-    return path.joinpath(path.name)
+        yaml.dump_all([c.data for c in cases], stream, Dumper=Dumper, default_flow_style=False)
+
+    return cases
 
 
 def YAML_Dumper():
