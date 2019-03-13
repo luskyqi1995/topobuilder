@@ -189,10 +189,10 @@ def make_fragment_files( dfloop: pd.DataFrame, edges: Dict, masfile: Path ) -> D
     sample = math.ceil(200 / dfloop.shape[0])
     for i, row in dfloop.iterrows():
         # Remember: MASTER match starts with 0!
-        dfs3.append((parse_rosetta_fragments(row['3mers'], source='{}_{}'.format(row['pdb'], row['chain']))
+        dfs3.append((parse_rosetta_fragments(str(row['3mers']), source='{}_{}'.format(row['pdb'], row['chain']))
                      .slice_region(row['match'][0][0] + 1, row['match'][1][1] + 1).sample_top_neighbors(sample)
                      .renumber(edges['ini']).top_limit(edges['end'])))
-        dfs9.append((parse_rosetta_fragments(row['9mers'], source='{}_{}'.format(row['pdb'], row['chain']))
+        dfs9.append((parse_rosetta_fragments(str(row['9mers']), source='{}_{}'.format(row['pdb'], row['chain']))
                      .slice_region(row['match'][0][0] + 1, row['match'][1][1] + 1).sample_top_neighbors(sample)
                      .renumber(edges['ini']).top_limit(edges['end'])))
 
@@ -298,19 +298,21 @@ def execute_master_fixedgap(outfile: Path, pds_list: Path, mdis: int, Mdis: int,
     """
     """
     createPDS = core.get_option('master', 'create')
-    createbash = '{0} --type query --pdb {1} --pds {2} > /dev/null'
+    createbash = '{0} --type query --pdb {1} --pds {2}'
     master = core.get_option('master', 'master')
-    masterbash = '{0} --query {1} --targetList {2} --rmsdCut {6} --matchOut {3} --gapLen {4}-{5} > /dev/null'
+    masterbash = '{0} --query {1} --targetList {2} --rmsdCut {6} --matchOut {3} --gapLen {4}-{5}'
 
     createcmd = shlex.split(createbash.format(createPDS, outfile, outfile.with_suffix('.pds')))
     mastercmd = shlex.split(masterbash.format(master, outfile.with_suffix('.pds'),
                                               pds_list, outfile.with_suffix('.master'), mdis, Mdis, rmsd_cut))
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(createcmd)))
-    run(createcmd)
+    with open(os.devnull, 'w') as devnull:
+        run(createcmd, stdout=devnull)
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('-> Execute: {}\n'.format(' '.join(mastercmd)))
-    run(mastercmd)
+    with open(os.devnull, 'w') as devnull:
+        run(mastercmd, stdout=devnull)
 
 
 def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ):

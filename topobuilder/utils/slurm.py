@@ -85,7 +85,8 @@ def control_slurm_file( slurm_file: Union[Path, str],
 
     :return: Name of the ``condition_file``.
     """
-    header = slurm_header(0, 2046)
+    with TBcore.on_option_value('slurm', 'array', 0, 'slurm', 'memory', 2046):
+        header = slurm_header()
     condition_file = condition_file if condition_file is not None else 'touch_control.{}'.format(os.getpid())
     condition_file = Path().cwd().joinpath(condition_file)
     if TBcore.get_option('system', 'verbose'):
@@ -108,10 +109,12 @@ def slurm_header() -> str:
         'nodes':           TBcore.get_option('slurm', 'nodes'),
         'time':            TBcore.get_option('slurm', 'time'),
         'ntasks-per-node': TBcore.get_option('slurm', 'ntasks-per-node'),
-        'cpus-per-task':   TBcore.get_option('slurm', 'cpus-per-task')
+        'cpus-per-task':   TBcore.get_option('slurm', 'cpus-per-task'),
+        'sublog':          '.%a'
     }
 
-    config['slurm_array'] = "" if config['slurm_array'] == 0 else "#SBATCH --array=1-{}\n".format(config['slurm_array'])
+    config['slurm_array'] = '' if config['slurm_array'] == 0 else "#SBATCH --array=1-{}\n".format(config['slurm_array'])
+    config['sublog'] = '' if config['slurm_array'] == 0  else config['sublog']
 
     if Path(config['logpath']).is_dir():
         config['logpath'] = str(Path(config['logpath']).resolve().joinpath('_output'))
@@ -123,6 +126,6 @@ def slurm_header() -> str:
         #SBATCH --cpus-per-task {cpus-per-task}
         #SBATCH --mem {memory}
         #SBATCH --time {time}
-        {slurm_array}#SBATCH --output={logpath}.%A.out
-        #SBATCH --error={logpath}.%A.err
+        {slurm_array}#SBATCH --output={logpath}.%A.{sublog}.out
+        #SBATCH --error={logpath}.%A.{sublog}.err
     """).format(**config)

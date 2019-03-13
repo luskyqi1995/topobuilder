@@ -11,6 +11,7 @@ from typing import Optional, Union, Dict
 from pathlib import Path, PosixPath
 import json
 import sys
+from types import GeneratorType
 
 # External Libraries
 
@@ -24,6 +25,8 @@ class GeneralEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, PosixPath):
             return str(o)
+        if isinstance(o, GeneratorType):
+            return list(o)
         return json.JSONEncoder.default(self, o)
 
 

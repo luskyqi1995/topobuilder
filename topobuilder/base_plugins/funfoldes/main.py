@@ -124,7 +124,8 @@ def case_apply( case: Case,
                'binary', '-out:mute', 'protocols.abinitio', 'protocols.moves', 'core.optimization']
 
     data['cmd'].extend(['-in:file:s', str(pdb_file), '-out:prefix', out_prefix,
-                        '-out:file:silent', str(outdir.joinpath(out_prefix).joinpath('.silent'))])
+                        '-out:file:silent', str(outdir.joinpath(out_prefix)) +'.silent'])
+    data['cmd'].extend(['-nstruct', str(nstruct)])
     data['cmd'].extend(commons)
 
     if TBcore.get_option('slurm', 'use'):
@@ -139,7 +140,7 @@ def case_apply( case: Case,
             sys.stdout.write('Submiting jobs to SLURM... this might take a while\n')
         TButil.submit_slurm(slurm_file)
 
-    data['silent_files'] = outdir.glob('*silent')
+    data['silent_files'] = list(outdir.glob('*silent'))
 
     data['minisilent'] = folders.joinpath('output.minisilent.gz')
     if TBcore.get_option('system', 'verbose'):
