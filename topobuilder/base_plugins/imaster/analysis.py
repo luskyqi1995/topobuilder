@@ -168,17 +168,22 @@ def process_master_geometries( masterdf: pd.DataFrame,
         nonlocal pdb3d
         filename, pdb3d = download_pdb(pdbdb, pdb3d, row['pdb'], row['chain'])
         pdb3d = pdb3d['AtomType:CA']
-        df = TButil.pdb_geometry_from_rules(pdb3d, zip(structures, row['match'], flip))
+        df = TButil.pdb_geometry_from_rules(pdb3d, list(zip(structures, row['match'], flip)))
         df = df.assign(pdb=[row['pdb'], ] * df.shape[0])
         df = df.assign(chain=[row['chain'], ] * df.shape[0])
         df = df.assign(rmsd=[row['rmsd'], ] * df.shape[0])
         df = df.assign(match=[row['match'], ] * df.shape[0])
+        df['pdb_path'] = [filename, ] * df.shape[0]
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.flush()
         return df
 
     # Get the appropiate path each structure should have.
-    return newdf.apply(execute, axis=1, result_type='expand')
+    data = []
+    for _, row in newdf.iterrows():
+        data.append(execute(row, structures, flip))
+    return pd.concat(data)
+    return newdf.apply(execute, axis=1, result_type='broadcast', args=(structures, flip))
 
 
 def geometric_properties( masterdf: pd.DataFrame,

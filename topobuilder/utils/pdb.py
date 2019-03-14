@@ -14,7 +14,7 @@ import math
 from string import ascii_uppercase
 
 # External Libraries
-from SBI.structure import PDB, PDBFrame
+from SBI.structure import PDB, Frame3D
 import SBI.core as SBIcr
 import pandas as pd
 import numpy as np
@@ -30,7 +30,7 @@ __all__ = ['build_pdb_object', 'pdb_geometry_from_rules']
 np.set_printoptions(precision=3)
 
 
-def build_pdb_object( sses: List[Dict], loops: Union[List[int], int] ) -> Tuple[PDBFrame, List[int]]:
+def build_pdb_object( sses: List[Dict], loops: Union[List[int], int] ) -> Tuple[Frame3D, List[int]]:
     """
     """
     if isinstance(loops, int):
@@ -52,31 +52,36 @@ def build_pdb_object( sses: List[Dict], loops: Union[List[int], int] ) -> Tuple[
     return structure, [int(p.iloc[-1]['auth_seq_id']) for p in pieces]
 
 
-def pdb_geometry_from_rules( pdb_file: Union[Path, str, PDBFrame], rules: List[Tuple] ) -> pd.DataFrame:
+def pdb_geometry_from_rules( pdb_file: Union[Path, str, Frame3D], rules: List[Tuple] ) -> pd.DataFrame:
     """
     """
-    pdb_file = Path(pdb_file)
-    if not pdb_file.is_file():
-        raise IOError('PDB structure {} not found.'.format(pdb_file))
-
     if isinstance(pdb_file, (Path, str)):
+        pdb_file = Path(pdb_file)
+        if not pdb_file.is_file():
+            raise IOError('PDB structure {} not found.'.format(pdb_file))
         pdb3d = PDB(str(pdb_file), format='pdb', clean=True, dehydrate=True, hetatms=False)['AtomTask:PROTEINBACKBONE']
-    elif isinstance(pdb_file, PDBFrame):
+    elif isinstance(pdb_file, Frame3D):
         pdb3d = pdb_file['AtomTask:PROTEINBACKBONE']
     else:
         raise ValueError('Unexpected type for pdb_file.')
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('PDB:Analyzing geometry of {}\n'.format(pdb3d.id))
 
+    if TBcore.get_option('system', 'debug'):
+        sys.stdout.write('PDB:Available secondary structures {}\n'.format(','.join([x[0] for x in rules])))
+        sys.stdout.write('PDB:With ranges {}\n'.format(','.join(['{}-{}'.format(*x[1]) for x in rules])))
+        sys.stdout.write('PDB:With flip policy {}\n'.format(','.join([str(x[2]) for x in rules])))
+
+
     pieces = make_pieces(pdb3d, rules)
     pieces = make_vectors(pieces, rules)
     pieces = make_planes(pieces)
     df = make_angles_and_distances(pieces)
-    df = df.assign(pdb_path=[str(pdb_file), ] * df.shape[0])
+    df = df.assign(pdb_path=[str(pdb_file) if not isinstance(pdb_file, Frame3D) else pdb3d.id, ] * df.shape[0])
     return df
 
 
-def make_pieces( pdb3d: PDBFrame, rules: List[Tuple] ) -> Dict:
+def make_pieces( pdb3d: Frame3D, rules: List[Tuple] ) -> Dict:
     """
     """
     pieces = {}

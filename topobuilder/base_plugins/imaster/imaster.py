@@ -38,7 +38,7 @@ def main( options ):
     """
     """
     # Load MASTER search data.
-    masterdf = TButil.parse_master_file(options.input, shift_0=True)
+    masterdf = TButil.parse_master_file(options.master, shift_0=True)
 
     # Case data
     case = Case(Path(options.case))
@@ -48,14 +48,14 @@ def main( options ):
     flip = cycle([case['configuration.flip_first'], not case['configuration.flip_first']])
     flip = [next(flip) for _ in range(len(sse))]
     # Select only the present ones.
-    present = [sse.index(i) for i in options.present]
+    present = [sse.index(i) for i in options.present.split('.')]
     sse = list(itemgetter(*present)(sse))
     flip = list(itemgetter(*present)(flip))
 
     # Geometric properties retrieval
     masterdf = process_master_geometries(masterdf, sse, flip)
     # Output data
-    masterdf.to_csv(Path(options.out).with_suffix('.csv'), index=False)
+    masterdf.to_csv(str(options.out) + '.csv', index=False)
 
 
 if __name__ == '__main__':

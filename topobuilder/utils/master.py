@@ -54,7 +54,7 @@ def parse_master_file( filename: str,
     ``<pdbid>_<chain>.pds``.
     """
     def shift(x):
-        return list(np.asarray(x) + 1)
+        return np.asarray(np.asarray(x) + 1).tolist()
 
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Reading MASTER file {}\n'.format(filename))
