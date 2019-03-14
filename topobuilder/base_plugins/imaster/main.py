@@ -21,7 +21,6 @@ import sys
 from topobuilder.case import Case
 import topobuilder.core as TBcore
 from .analysis import get_steps
-from .slurm import make_slurm_file
 from .core import core
 
 
