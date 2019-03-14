@@ -180,7 +180,7 @@ def case_apply( case: Case,
 def make_fragment_files( dfloop: pd.DataFrame, edges: Dict, masfile: Path ) -> Dict:
     """
     """
-    data = {'loop_length': int(dfloop.iloc[0].values[0]), 'abego': list(dfloop['loop'].values),
+    data = {'loop_length': int(dfloop.iloc[0]['loop_length']), 'abego': list(dfloop['loop'].values),
             'edges': edges, 'fragfiles': []}
 
     dfs3 = []

@@ -23,7 +23,7 @@ import subprocess
 import topobuilder.core as TBcore
 
 
-__all__ = ['slurm_header', 'submit_slurm', 'submit_nowait_slurm']
+__all__ = ['slurm_header', 'slurm_pyenv', 'submit_slurm', 'submit_nowait_slurm']
 
 
 def submit_slurm( slurm_file: Union[Path, str],
@@ -129,3 +129,14 @@ def slurm_header() -> str:
         {slurm_array}#SBATCH --output={logpath}.%A.{sublog}.out
         #SBATCH --error={logpath}.%A.{sublog}.err
     """).format(**config)
+
+
+def slurm_pyenv() -> str:
+    """
+    """
+    pypath = Path(sys.executable).parent.joinpath('activate')
+    if not os.access(pypath, os.X_OK):
+        return ''
+    else:
+        return '\n'.join(['source {}'.format(pypath), "export PYTHONPATH=''"])
+

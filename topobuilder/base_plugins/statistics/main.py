@@ -27,7 +27,6 @@ from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
 from topobuilder import PluginOrderError
-from .core import core
 
 
 __all__ = ['apply', 'case_apply']
@@ -73,10 +72,10 @@ def case_apply( case: Case,
 
     # Load analysis commands
     if analysis == 'geometry':
-        commands.extend(geometry(case, wfolder, thisfolder))
+        commands.append(geometry(case, wfolder, thisfolder))
 
     # Execute
-    execute(commands)
+    execute(commands, wfolder)
 
     # Postprocess
     postprocess(analysis, wfolder)
@@ -96,7 +95,7 @@ def funfoldes2pdb( case: Case, wfolder: Path ) -> List:
     if silent_files is None:
         raise PluginOrderError('There is no output data from the funfoldes plugin.')
 
-    extract_pdb = Path(str(Path(TBcore.get_option('rosetta', 'scripts').resolve())).replace('rosetta_scripts.', 'extract_pdbs.'))
+    extract_pdb = Path(str(Path(TBcore.get_option('rosetta', 'scripts')).resolve()).replace('rosetta_scripts.', 'extract_pdbs.'))
     if not extract_pdb.is_file() or not os.access(str(extract_pdb), os.X_OK):
         raise IOError('Cannot find executable {}'.format(extract_pdb))
 
@@ -108,7 +107,7 @@ def funfoldes2pdb( case: Case, wfolder: Path ) -> List:
         indir = str(wfolder.joinpath('${SLURM_ARRAY_TASK_ID}'))
         cmd = ['srun', extract_pdb, '-in:file:silent']
         cmd.append(os.path.commonprefix([str(x) for x in silent_files]) + '${SLURM_ARRAY_TASK_ID}.silent')
-        cmd.extend(['-out:prefix', indir])
+        cmd.extend(['-out:prefix', str(indir) + '/'])
     return [['mkdir', '-p', indir] if TBcore.get_option('slurm', 'use') else '', cmd]
 
 
@@ -134,8 +133,10 @@ def execute( cmd: List, wfolder: Path ):
     else:
         slurm_file = wfolder.joinpath('submit_analytics.sh')
         with slurm_file.open('w') as fd:
-            fd.write(TButil.slurm_header() + '\n' )
-            fd.write(' '.join([str(x) for x in cmd]) + '\n')
+            fd.write(TButil.slurm_header() + '\n')
+            fd.write(TButil.slurm_pyenv() + '\n')
+            for c in cmd:
+                fd.write(' '.join([str(x) for x in c]) + '\n')
         TButil.submit_slurm(slurm_file)
 
 
@@ -144,4 +145,4 @@ def postprocess( analysis: str, wfolder: Path ):
     """
     if analysis == 'geometry':
         df = pd.concat([pd.read_csv(x) for x in Path(wfolder).glob('_geometry.*.csv')])
-        df.write(wfolder.joinpath('geometry.csv'), index=False)
+        df.to_csv(wfolder.joinpath('geometry.csv'), index=False)

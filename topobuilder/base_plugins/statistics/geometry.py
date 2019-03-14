@@ -30,6 +30,8 @@ def options():
     parser.add_argument('-case', dest='case', action='store', required=True)
     parser.add_argument('-indir', dest='indir', action='store', required=True)
     parser.add_argument('-out', dest='out', action='store', required=True)
+    
+    return parser.parse_args()
 
 
 def main( options ):
@@ -51,16 +53,19 @@ def main( options ):
         ranges.append([start, start + s - 1])
         start += s
         if i < len(loops):
-            start += (loops[i] + 1)
+            start += (loops[i])
 
     rules = list(zip(sse, ranges, flip))
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Applying rules:\n')
-        sys.stdout.write(rules)
+        sys.stdout.write(','.join(sse) + '\n')
+        sys.stdout.write(','.join(['{}-{}'.format(x, y) for x, y in ranges]) + '\n')
+        sys.stdout.write(','.join([str(x) for x in flip]) + '\n')
         sys.stdout.write('\n')
 
     for pdbf in Path(options.indir).glob('*pdb'):
-        data.append(TButil.pdb_geometry_from_rules(pdbf, ))
+        data.append(TButil.pdb_geometry_from_rules(pdbf, rules))
+        sys.stdout.flush()
 
     df = pd.concat(data)
     df.to_csv(options.out, index=False)
