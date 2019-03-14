@@ -25,6 +25,7 @@ import sympy as sy
 
 # This Library
 import topobuilder.core as TBcore
+import topobuilder.utils as TButil
 try:
     from .core import core
 except ImportError:
@@ -32,7 +33,7 @@ except ImportError:
 
 
 __all__ = ['geometric_analysis', 'geometric_stats', 'geometric_properties',
-           'parse_master_file', 'get_steps']
+           'parse_master_file', 'get_steps', 'process_master_geometries']
 
 
 def get_steps( blist: List[bool] ) -> List[Tuple[int]]:
@@ -124,6 +125,60 @@ def geometric_stats( filename: str,
 
     df[['pdb_path', 'vectors', 'planes', 'angles', 'points']] = df.apply(execute, axis=1, result_type='expand')
     return df
+
+
+def process_master_geometries( masterdf: pd.DataFrame,
+                               structures: List[str],
+                               flip: List[str]
+                               ) -> pd.DataFrame:
+    """Use the PDS matches provided by MASTER to obtain the geometric properties.
+
+    Column modifications:
+
+    =========== ========================================= =======
+    column name description                               status
+    =========== ========================================= =======
+    pds_path    Path to the PDS file containing the match dropped
+    pdb_path    Path to the PDB file containing the match new!
+    sse         Identifier of the query secondary         new!
+                structre.
+    layer       Layer against which the data SSE is       new!
+                evaluated
+    vectors     List of fitting vectors to the SSE.       new!
+    planes      List of :class:`tuple` with fitting       new!
+                planes and edges to the SSE.
+    angles      List of angles between vectors and planes new!
+    points      List of distances between the center of   new!
+                each vector and the planes
+    =========== ========================================= =======
+    """
+    # Define PDB database.
+    with SBIcr.on_option_value('structure', 'format', 'pdb'):
+        pdbdb = SBIdb.PDBLink(core.get_option('master', 'pdb'))
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.write('Set PDB database as: {}\n'.format(core.get_option('master', 'pdb')))
+
+    # Prepare data: Sort by structure-chain to avoid multi-reading
+    newdf = masterdf.sort_values(['pdb', 'chain'])
+    pdb3d = None
+
+    def execute( row, structures, flip ):
+        # 1. Download file
+        nonlocal pdbdb
+        nonlocal pdb3d
+        filename, pdb3d = download_pdb(pdbdb, pdb3d, row['pdb'], row['chain'])
+        pdb3d = pdb3d['AtomType:CA']
+        df = TButil.pdb_geometry_from_rules(pdb3d, zip(structures, row['match'], flip))
+        df = df.assign(pdb=[row['pdb'], ] * df.shape[0])
+        df = df.assign(chain=[row['chain'], ] * df.shape[0])
+        df = df.assign(rmsd=[row['rmsd'], ] * df.shape[0])
+        df = df.assign(match=[row['match'], ] * df.shape[0])
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.flush()
+        return df
+
+    # Get the appropiate path each structure should have.
+    return newdf.apply(execute, axis=1, result_type='expand')
 
 
 def geometric_properties( masterdf: pd.DataFrame,
@@ -310,44 +365,44 @@ def make_distances( planes: List[List[float]],
     return distances
 
 
-def parse_master_file( filename: str,
-                       max_rmsd: Optional[float] = None
-                       ) -> pd.DataFrame:
-    """Load MASTER output data.
-
-    :param str filename: Output file.
-    :param float max_rmsd: Maximum RMSD value to recover.
-
-    :return: :class:`~pandas.DataFrame`
-
-    Columns of the returned :class:`~pandas.DataFrame` are:
-
-    =========== ===================================================
-    column name description
-    =========== ===================================================
-    rmsd        RMSD value between query and match
-    pds_path    Path to the PDS file containing the match
-    pdb         PDB identifier
-    chain       Chain identifier
-    match       List of ranges for the match (Rosetta count)
-    =========== ===================================================
-
-    This assumes that the PDS files basename has the standard nomenclature
-    ``<pdbid>_<chain>.pds``.
-    """
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Reading MASTER file {}\n'.format(filename))
-    df = pd.read_csv(filename,
-                     names=list(range(20)), engine='python',
-                     sep=r'\s+', header=None).dropna(axis=1, how='all')
-    df['match'] = df[df.columns[2:]].astype(str).sum(axis=1).apply(literal_eval)
-    df = df.rename(columns={0: 'rmsd', 1: 'pds_path'})
-    df = df.drop(columns=[i for i in df.columns if isinstance(i, int)])
-    df[['pdb', 'chain']] = (pd.DataFrame(list(df['pds_path'].str.replace('.pds', '')
-                            .apply(lambda x: os.path.basename(x).split('_')).values)))
-    if max_rmsd is not None:
-        df = df[(df['rmsd'] <= max_rmsd)]
-    return df[['rmsd', 'pds_path', 'pdb', 'chain', 'match']]
+# def parse_master_file( filename: str,
+#                        max_rmsd: Optional[float] = None
+#                        ) -> pd.DataFrame:
+#     """Load MASTER output data.
+#
+#     :param str filename: Output file.
+#     :param float max_rmsd: Maximum RMSD value to recover.
+#
+#     :return: :class:`~pandas.DataFrame`
+#
+#     Columns of the returned :class:`~pandas.DataFrame` are:
+#
+#     =========== ===================================================
+#     column name description
+#     =========== ===================================================
+#     rmsd        RMSD value between query and match
+#     pds_path    Path to the PDS file containing the match
+#     pdb         PDB identifier
+#     chain       Chain identifier
+#     match       List of ranges for the match (Rosetta count)
+#     =========== ===================================================
+#
+#     This assumes that the PDS files basename has the standard nomenclature
+#     ``<pdbid>_<chain>.pds``.
+#     """
+#     if TBcore.get_option('system', 'verbose'):
+#         sys.stdout.write('Reading MASTER file {}\n'.format(filename))
+#     df = pd.read_csv(filename,
+#                      names=list(range(20)), engine='python',
+#                      sep=r'\s+', header=None).dropna(axis=1, how='all')
+#     df['match'] = df[df.columns[2:]].astype(str).sum(axis=1).apply(literal_eval)
+#     df = df.rename(columns={0: 'rmsd', 1: 'pds_path'})
+#     df = df.drop(columns=[i for i in df.columns if isinstance(i, int)])
+#     df[['pdb', 'chain']] = (pd.DataFrame(list(df['pds_path'].str.replace('.pds', '')
+#                             .apply(lambda x: os.path.basename(x).split('_')).values)))
+#     if max_rmsd is not None:
+#         df = df[(df['rmsd'] <= max_rmsd)]
+#     return df[['rmsd', 'pds_path', 'pdb', 'chain', 'match']]
 
 #
 # def get_pdbs(masterdf: pd.DataFrame) -> pd.DataFrame:

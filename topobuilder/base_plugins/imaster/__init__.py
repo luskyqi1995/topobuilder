@@ -7,4 +7,3 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 from .main import *
-from .analysis import parse_master_file

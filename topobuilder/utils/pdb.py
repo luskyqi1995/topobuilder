@@ -52,14 +52,19 @@ def build_pdb_object( sses: List[Dict], loops: Union[List[int], int] ) -> Tuple[
     return structure, [int(p.iloc[-1]['auth_seq_id']) for p in pieces]
 
 
-def pdb_geometry_from_rules( pdb_file: Union[Path, str], rules: List[Tuple] ) -> pd.DataFrame:
+def pdb_geometry_from_rules( pdb_file: Union[Path, str, PDBFrame], rules: List[Tuple] ) -> pd.DataFrame:
     """
     """
     pdb_file = Path(pdb_file)
     if not pdb_file.is_file():
         raise IOError('PDB structure {} not found.'.format(pdb_file))
 
-    pdb3d = PDB(str(pdb_file), format='pdb', clean=True, dehydrate=True, hetatms=False)['AtomTask:PROTEINBACKBONE']
+    if isinstance(pdb_file, (Path, str)):
+        pdb3d = PDB(str(pdb_file), format='pdb', clean=True, dehydrate=True, hetatms=False)['AtomTask:PROTEINBACKBONE']
+    elif isinstance(pdb_file, PDBFrame):
+        pdb3d = pdb_file['AtomTask:PROTEINBACKBONE']
+    else:
+        raise ValueError('Unexpected type for pdb_file.')
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('PDB:Analyzing geometry of {}\n'.format(pdb3d.id))
 
@@ -68,7 +73,6 @@ def pdb_geometry_from_rules( pdb_file: Union[Path, str], rules: List[Tuple] ) ->
     pieces = make_planes(pieces)
     df = make_angles_and_distances(pieces)
     df = df.assign(pdb_path=[str(pdb_file), ] * df.shape[0])
-    print(df)
     return df
 
 

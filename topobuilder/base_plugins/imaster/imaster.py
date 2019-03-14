@@ -9,12 +9,15 @@
 # Standard Libraries
 import argparse
 from pathlib import Path
+from operator import itemgetter
+from itertools import cycle
 
 # External Libraries
 
 # This Library
-from analysis import parse_master_file, geometric_properties, geometric_stats
-from core import core
+import topobuilder.utils as TButil
+from topobuilder.case import Case
+from analysis import process_master_geometries
 
 
 def options():
@@ -23,52 +26,36 @@ def options():
     # Parse Arguments
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-in', dest='input', action='store', required=True)
+    parser.add_argument('-case', dest='case', action='store', required=True)
+    parser.add_argument('-master', dest='master', action='store', required=True)
+    parser.add_argument('-present', dest='present', action='store', default=None)
     parser.add_argument('-out', dest='out', action='store', required=True)
-    parser.add_argument('-mode', dest='mode', action='store', default='master', choices=['master', 'stats'])
-    parser.add_argument('-selection', dest='selection', action='store', default=None)
-    parser.add_argument('-directionality', dest='directionality', action='store', required=True)
-    parser.add_argument('-pymol', dest='pymol', action='store_true', default=False)
-    parser.add_argument('-planepick', dest='planepick', action='store', nargs='+', default=[])
 
-    options = parser.parse_args()
-
-    if options.mode == 'master' and not Path(options.input).is_file():
-        raise IOError('Unable to find MASTER file {}.'.format(options.input))
-    if options.mode == 'stats' and not Path(options.input).is_dir():
-        raise IOError('Unable to find PDB dir {}.'.format(options.input))
-
-    if options.mode == 'stats' and options.selection is None:
-        raise AttributeError('In stats mode, a selection must be provided.')
-
-    if core.get_option('imaster', 'pymol') or options.pymol:
-        core.set_option('imaster', 'pymol', True)
-        options.pymol = options.out + '.pymol'
-    else:
-        core.set_option('imaster', 'pymol', False)
-        options.pymol = None
-
-    if len(options.planepick) == 0:
-        options.planepick = None
-    else:
-        options.planepick = [int(x) for x in options.planepick]
-        options.planepick = [options.planepick, ]
-
-    return options
+    return parser.parse_args()
 
 
 def main( options ):
     """
     """
-    if options.mode == 'master':
-        # Load MASTER search data.
-        masterdf = parse_master_file(options.input)
-        # Geometric properties retrieval
-        masterdf = geometric_properties(masterdf, options.planepick, options.directionality, options.pymol)
-    if options.mode == 'stats':
-        masterdf = geometric_stats(options.input, options.planepick, options.directionality, options.selection)
+    # Load MASTER search data.
+    masterdf = TButil.parse_master_file(options.input, shift_0=True)
+
+    # Case data
+    case = Case(Path(options.case))
+    # Get connectivities
+    sse = case.connectivities_str[0].split('.')
+    # Get flips
+    flip = cycle([case['configuration.flip_first'], not case['configuration.flip_first']])
+    flip = [next(flip) for _ in range(len(sse))]
+    # Select only the present ones.
+    present = [sse.index(i) for i in options.present]
+    sse = list(itemgetter(*present)(sse))
+    flip = list(itemgetter(*present)(flip))
+
+    # Geometric properties retrieval
+    masterdf = process_master_geometries(masterdf, sse, flip)
     # Output data
-    masterdf.to_csv(options.out + '.csv', index=False)
+    masterdf.to_csv(Path(options.out).with_suffix('.csv'), index=False)
 
 
 if __name__ == '__main__':

@@ -30,7 +30,7 @@ def options():
     parser.add_argument('-case', dest='case', action='store', required=True)
     parser.add_argument('-indir', dest='indir', action='store', required=True)
     parser.add_argument('-out', dest='out', action='store', required=True)
-    
+
     return parser.parse_args()
 
 

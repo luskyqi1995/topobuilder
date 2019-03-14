@@ -360,7 +360,7 @@ def process_master_data( masfile: Path,
         df['match'] = df['match'].apply(literal_eval)
         return df
 
-    dfloop = plugin_source.load_plugin('imaster').parse_master_file(masfile)
+    dfloop = TButil.parse_master_file(masfile)
     dfloop = dfloop.merge(abego, on=['pdb', 'chain']).merge(fragfiles, on=['pdb', 'chain']).dropna()
     dfloop[['abego', 'loop', 'loop_length']] = dfloop.apply(cutter, axis=1, result_type='expand')
     dfloop = dfloop.iloc[:top_loops]
