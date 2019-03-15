@@ -7,6 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 
+from .plugins import *
 from .plot import *
 from .slurm import *
 from .pdb import *

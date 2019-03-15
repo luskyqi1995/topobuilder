@@ -55,7 +55,7 @@ setup(
     keywords='development',
 
     install_requires=['numpy', 'scipy', 'networkx', 'svgwrite', 'transforms3d', 'bottle',
-                      'marshmallow', 'pyyaml', 'pluginbase', 'libconfig>=0.9', 'rstoolbox'],
+                      'marshmallow', 'pyyaml', 'pluginbase', 'libconfig>=0.9', 'rstoolbox', 'colorama'],
 
     packages=find_packages(exclude=['docs', 'demo', 'sphinx-docs']),
     include_package_data=True,

@@ -19,6 +19,7 @@ with core.ifndef():
     # Register IO control options
     core.register_option('system', 'verbose', False, 'bool', 'Makes topobuilder chatty.')
     core.register_option('system', 'debug', False, 'bool', 'Makes topobuilder VERY chatty.')
+    core.register_option('system', 'strict', False, 'bool', 'When True, warings become exit points.')
     core.register_option('system', 'overwrite', False, 'bool', 'Overwrite existing structure files.')
     core.register_option('system', 'forced', False, 'bool', 'Ignore checkpoints and redo calculations.')
     core.register_option('system', 'image', '.png', 'string', 'Format to output images', ['.png', '.svg'])
