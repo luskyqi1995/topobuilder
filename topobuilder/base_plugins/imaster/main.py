@@ -24,7 +24,7 @@ from .analysis import get_steps
 from .core import core
 
 
-__all__ = ['apply']
+__all__ = ['apply', 'case_apply']
 
 
 def apply( cases: List[Case], prtid: int, **kwargs ) -> List[Case]:
@@ -64,6 +64,8 @@ def case_apply( case: Case, pds_list: List[str] ) -> str:
     steps = get_steps([x[-1] == 'E' for x in case.architecture_str.split('.')])
 
     # Work by layers
+    for step in steps:
+        pass
 
 
     # Make slurm file template

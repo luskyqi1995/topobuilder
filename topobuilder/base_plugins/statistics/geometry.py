@@ -17,7 +17,6 @@ import pandas as pd
 
 # This Library
 import topobuilder.utils as TButil
-import topobuilder.core as TBcore
 from topobuilder.case import Case
 
 
@@ -56,12 +55,6 @@ def main( options ):
             start += (loops[i])
 
     rules = list(zip(sse, ranges, flip))
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Applying rules:\n')
-        sys.stdout.write(','.join(sse) + '\n')
-        sys.stdout.write(','.join(['{}-{}'.format(x, y) for x, y in ranges]) + '\n')
-        sys.stdout.write(','.join([str(x) for x in flip]) + '\n')
-        sys.stdout.write('\n')
 
     for pdbf in Path(options.indir).glob('*pdb'):
         data.append(TButil.pdb_geometry_from_rules(pdbf, rules))

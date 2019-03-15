@@ -72,7 +72,6 @@ def pdb_geometry_from_rules( pdb_file: Union[Path, str, Frame3D], rules: List[Tu
         sys.stdout.write('PDB:With ranges {}\n'.format(','.join(['{}-{}'.format(*x[1]) for x in rules])))
         sys.stdout.write('PDB:With flip policy {}\n'.format(','.join([str(x[2]) for x in rules])))
 
-
     pieces = make_pieces(pdb3d, rules)
     pieces = make_vectors(pieces, rules)
     pieces = make_planes(pieces)
