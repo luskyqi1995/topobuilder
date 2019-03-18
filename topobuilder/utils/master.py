@@ -9,8 +9,11 @@
 # Standard Libraries
 import sys
 import os
-from typing import Optional
+import shlex
+from pathlib import Path
+from typing import Optional, Tuple, List, Union
 from ast import literal_eval
+from tempfile import NamedTemporaryFile
 
 # External Libraries
 import pandas as pd
@@ -18,8 +21,113 @@ import numpy as np
 
 # This Library
 import topobuilder.core as TBcore
+from .plugins import plugin_filemaker
 
-__all__ = ['parse_master_file']
+__all__ = ['createPDS', 'master_best_each', 'parse_master_file']
+
+pds_file = None
+pds_list = None
+create_exe = None
+master_exe = None
+
+
+def get_master_exes() -> Tuple(str, str):
+    """Provide the path to the MASTER executables.
+
+    .. note::
+        Depends onf the ``master.master`` configuration option
+        Depends onf the ``master.create`` configuration option
+    """
+    global create_exe
+    global master_exe
+
+    if create_exe is not None and master_exe is not None:
+        return create_exe, master_exe
+
+    master_exe = TBcore.get_option('master', 'master')
+    if not os.access(master_exe, os.X_OK):
+        raise IOError('Unable to find a proper executable for master at {}'.format(master_exe))
+    create_exe = TBcore.get_option('master', 'create')
+    if not os.access(create_exe, os.X_OK):
+        raise IOError('Unable to find a proper executable for createPDS at {}'.format(create_exe))
+    return master_exe, create_exe
+
+
+def pds_database( force: Optional[bool] = False ) -> Tuple[Path, List]:
+    """Provide the list of available PDS as a file and a list.
+
+    :param bool force: When :data:`.True`, recheck the PDS database even if one is
+        already assigned.
+
+    .. note::
+        Depends onf the ``master.pds`` configuration option
+    """
+    global pds_file
+    global pds_list
+
+    if not force:
+        if pds_file is not None and pds_list is not None:
+            return pds_file, pds_list
+
+    pds_file = TBcore.get_option('master', 'pds')
+    pds_list = []
+    pds_file = Path(pds_file)
+    if pds_file.is_file():
+        pds_list = [line.strip() for line in open(pds_file).readlines() if len(line.strip()) > 0]
+        return pds_file, pds_list
+    elif pds_file.is_dir():
+        pds_list = [str(x.resolve()) for x in pds_file.glob('*/*.pds')]
+        f = NamedTemporaryFile(mode='w', delete=False)
+        plugin_filemaker('Temporary file for PDS database: {}\n'.format(f.name))
+        [f.write(x + '\n') for x in pds_list]
+        f.close()
+        pds_file = Path(f.name)
+        return pds_file, pds_list
+    else:
+        raise ValueError('The provided MASTER database directory/list file cannot be found.')
+
+
+def createPDS( infile: Union[Path, str], outfile: Optional[str] = None ) -> List[str]:
+    """Make the createPDS command call.
+
+    .. note::
+        Depends onf the ``master.create`` configuration option
+    """
+    _, createPDS = get_master_exes()
+    createbash = '{0} --type query --pdb {1} --pds {2}'
+    infile = Path(infile)
+    if not infile.is_file():
+        raise IOError('Unable to find structure file {}'.format(infile))
+    outfile = outfile if outfile is not None else infile.with_suffix('.pds')
+    return shlex.split(createbash.format(createPDS, infile, outfile))
+
+
+def master_best_each( infile: Union[Path, str],
+                      outdir: Union[Path, str],
+                      rmsd: Optional[float] = 5.0
+                      ) -> List[List[str]]:
+    """Create one MASTER call for each PDS file with the --topN 1 flag.
+
+    .. note::
+        Depends onf the ``master.master`` configuration option
+        Depends onf the ``master.pds`` configuration option
+    """
+    master, _ = get_master_exes()
+    _, pds_list = pds_database()
+
+    infile = Path(infile)
+    if not infile.is_file():
+        raise IOError('Unable to find PDS file {}'.format(infile))
+    outdir = Path(outdir)
+    if not outdir.is_dir():
+        outdir.mkdir(parents=True, exist_ok=True)
+    createbash = '{0} --query {1} --target {2} --rmsdCut {3}  --topN 1 --matchout {4}'
+
+    cmds = []
+    for pds in pds_list:
+        outfile = infile.name.with_suffix(Path(pds).name.with_suffix('') + '.master')
+        cmds.append(createbash.format(master, infile, pds, rmsd, outfile))
+    return cmds
 
 
 def parse_master_file( filename: str,

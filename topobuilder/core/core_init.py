@@ -8,6 +8,7 @@
 """
 # Standard Libraries
 import os
+import shutil
 
 # External Libraries
 from libconfig import Config
@@ -23,6 +24,8 @@ with core.ifndef():
     core.register_option('system', 'overwrite', False, 'bool', 'Overwrite existing structure files.')
     core.register_option('system', 'forced', False, 'bool', 'Ignore checkpoints and redo calculations.')
     core.register_option('system', 'image', '.png', 'string', 'Format to output images', ['.png', '.svg'])
+    core.register_option('system', 'jupyter', 'JPY_PARENT_PID' in os.environ, 'bool',
+                         'Is TopoBuilder run from a notebbok?', locked=True)
 
     # For plugins that require SLURM submission
     core.register_option('slurm', 'use', True, 'bool', 'Use SLURM cluster submission system.')
@@ -34,6 +37,12 @@ with core.ifndef():
     core.register_option('slurm', 'array', 700, 'int', 'Into how may nodes is the search splitted.')
     core.register_option('slurm', 'time', '10:00:00', 'string', 'Expected running time.')
     core.register_option('slurm', 'logs', os.getcwd(), 'path_in', 'Path on were to dump the log files.')
+
+    # For plugins that require MASTER
+    core.register_option('master', 'master', shutil.which('master'), 'path_in', 'MASTER executable.')
+    core.register_option('master', 'create', shutil.which('createPDS'), 'path_in', 'createPDS executable.')
+    core.register_option('master', 'pds', None, 'path_in', 'Local PDS database.')
+    core.register_option('master', 'pdb', None, 'path_in', 'Local PDB database.')
 
     # For plugins that requires RosettaScripts
     core.register_option('rosetta', 'scripts', None, 'path_in', 'Full path to the rosetta_scripts executable.')

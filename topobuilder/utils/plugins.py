@@ -25,15 +25,16 @@ def plugin_title( plugin_path: str, cases: int ):
     :param str plugin_path: ``__file__`` of the plugin's main file.
     :param int cases: Number of cases to which the plugin will be applied.
     """
-    if TBcore.get_option('system', 'verbose'):
-        name = os.path.basename(os.path.dirname(plugin_path)).upper()
-        name = ' '.join(['  TB PLUGIN:', name, ' '])
-        bord = ''.join(['_', ] * len(name))
+    name = os.path.basename(os.path.dirname(plugin_path)).upper()
+    name = ' '.join(['  TB PLUGIN:', name, ' '])
+    bord = ''.join(['_', ] * len(name))
 
-        sys.stdout.write('\n')
-        sys.stdout.write(cl.Style.BRIGHT + bord + '\n')
-        sys.stdout.write(cl.Style.BRIGHT + name + '\n')
-        sys.stdout.write(cl.Style.BRIGHT + bord + '\n')
+    sys.stdout.write('\n')
+    sys.stdout.write(cl.Style.BRIGHT + bord + '\n')
+    sys.stdout.write(cl.Style.BRIGHT + name + '\n')
+    sys.stdout.write(cl.Style.BRIGHT + bord + '\n')
+
+    if TBcore.get_option('system', 'verbose'):
         sys.stdout.write(cl.Style.DIM + '* batch applied to {:03d} cases\n\n'.format(cases))
 
 
@@ -45,3 +46,21 @@ def plugin_warning( text: str ):
     sys.stdout.write(cl.Fore.GREEN + text + '\n')
     if TBcore.get_option('system', 'strict'):
         sys.exit(-1)
+
+
+def plugin_filemaker( text: str ):
+    """Highlight the creation of new files.
+
+    :param str text: File creation text.
+    """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write(cl.Fore.WHITE + cl.Back.BLUE + 'NEW FILE: ' + text + '\n')
+
+
+def plugin_filereader( text: str ):
+    """Highlight the loading of files.
+
+    :param str text: File reading text.
+    """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write(cl.Fore.BLUE + cl.Back.WHITE + 'READ FILE: ' + text + '\n')

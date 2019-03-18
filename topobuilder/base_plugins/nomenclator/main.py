@@ -26,6 +26,10 @@ def apply( cases: List[Case],
            subnames: Union[str, List[str]],
            **kwargs ) -> List[Case]:
     """Add subnames to a list of Case.
+
+    :param cases: List of :class:`.Case` to execute.
+
+    :return: :func:`list` of :class:`.Case`
     """
     TButil.plugin_title(__file__, len(cases))
 
@@ -46,7 +50,7 @@ def apply_case( case: Case,
 
     :return: :class:`.Case` with ``configuration.name`` modified
     """
-    c = Case(case)
+    kase = Case(case)
 
     # Unify subnames behaviour for 1 to N
     if not isinstance(subnames, list):
@@ -54,15 +58,15 @@ def apply_case( case: Case,
 
     # Check name was not already added.
     sn = copy.deepcopy(subnames)
-    if case.name.endswith('_'.join(sn)):
+    if kase.name.endswith('_'.join(sn)):
         TButil.plugin_warning('Seems the subnames {} already existed.'.format('_'.join(sn)))
         TButil.plugin_warning('Will NOT re-append.')
-        return c
+        return kase
 
     # Add new names
-    sn.insert(0, case.name)
-    c.data['configuration']['name'] = '_'.join(sn)
+    sn.insert(0, kase.name)
+    kase.data['configuration']['name'] = '_'.join(sn)
 
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Renamed case {} to {}\n'.format(case.name, c.name))
-    return c
+        sys.stdout.write('Renamed case {} to {}\n'.format(case.name, kase.name))
+    return kase

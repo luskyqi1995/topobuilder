@@ -12,6 +12,7 @@
 import sys
 from random import random
 from bisect import bisect
+from typing import Dict, Union, Optional
 
 # External Libraries
 import numpy as np
@@ -24,17 +25,35 @@ from SBI.data import alphabet
 import topobuilder.core as TBcore
 
 
-__all__ = ['ParametricStructure']
+__all__ = ['SSEArchitect']
+
+
+class SSEArchitect( object ):
+    """Decides the correct type of secondary structure to build.
+    """
+    def __new__( cls, *args, **kwargs ):
+        sse_type = kwargs.pop('type', None)
+        if sse_type is None:
+            raise AttributeError('A secondary structure type must be provided.')
+        sse_type = sse_type.upper()
+
+        if sse_type == 'H':
+            return AlphaHelixArchitect(*args, **kwargs)
+        elif sse_type == 'G':
+            return Helix310Architect(*args, **kwargs)
+        elif sse_type == 'I':
+            return HelixPiArchitect(*args, **kwargs)
+        elif sse_type == 'E':
+            return FlatBetaArchitect(*args, **kwargs)
+        else:
+            raise ValueError('Unrecognized secondary structure type {}.'.format(sse_type))
 
 
 class ParametricStructure( object ):
 
-    _MONO = None
-    _PERIODE = None
-    _ROTATION = None
-    _AA_STAT = None
+    _MONO, _PERIODE, _ROTATION, _AA_STAT = None, None, None, None
 
-    def __init__( self, indata ):
+    def __init__( self, indata: Union[Frame3D, Dict], pick_aa: Optional[str] = None ):
         """
         """
         if isinstance(indata, Frame3D):
@@ -44,22 +63,11 @@ class ParametricStructure( object ):
         elif isinstance(indata, dict):
             self.pdb = []
             self.desc = indata
-            self.build()
+            self.build(pick_aa)
 
-    def build( self ):
+    def build( self, pick_aa: Optional[str] = None ):
         """
         """
-        def weighted_choice(choices):
-            values, weights = zip(*choices)
-            total = 0
-            cum_weights = []
-            for w in weights:
-                total += w
-                cum_weights.append(total)
-            x = random() * total
-            i = bisect(cum_weights, x)
-            return values[i]
-
         if self._MONO is None or self._PERIODE is None:
             raise NotImplementedError()
 
@@ -97,8 +105,12 @@ class ParametricStructure( object ):
 
         # Prepare sequence
         sequence = []
-        for _ in range(self.desc['length']):
-            sequence.append(alphabet.aminoacids1to3(weighted_choice(self._AA_STAT)))
+        if pick_aa is not None:
+            pick_aa = pick_aa if len(pick_aa) == 1 else alphabet.aminoacids3to1(pick_aa)
+            sequence = [pick_aa, ] * self.desc['length']
+        else:
+            for _ in range(self.desc['length']):
+                sequence.append(alphabet.aminoacids1to3(weighted_choice(self._AA_STAT)))
         sequence = np.repeat(np.asarray(sequence), _MONO.shape[0])
 
         self.pdb = PDB(pd.DataFrame(self.pdb, columns=["Cartn_x", "Cartn_y", "Cartn_z"])
@@ -110,3 +122,61 @@ class ParametricStructure( object ):
         """
         """
         raise NotImplementedError()
+
+
+class AlphaHelixArchitect( ParametricStructure ):
+    """
+    """
+    _PERIODE = 1.5
+    _ROTATION = 100
+    _MONO = {'N': [1.321, 0.841, -0.711],
+             'CA': [2.300, 0.000, 0.000],
+             'C': [1.576, -1.029, 0.870],
+             'O': [1.911, -2.248, 0.871]}
+    # CHOP780201 alpha-helix propensity AAindex (Chou-Fasman, 1978b)
+    # TO 0: G -> 0.57; P -> 0.57
+    _AA_STAT = [("A", 1.42), ("L", 1.21), ("R", 0.98), ("K", 1.16), ("N", 0.67),
+                ("M", 1.45), ("D", 1.01), ("F", 1.13), ("C", 0.70), ("P", 0.00),
+                ("Q", 1.11), ("S", 0.77), ("E", 1.51), ("T", 0.83), ("G", 0.00),
+                ("W", 1.08), ("H", 1.00), ("Y", 0.69), ("I", 1.08), ("V", 1.06)]
+
+
+class Helix310Architect( ParametricStructure ):
+    """
+    """
+    _PERIODE = 2.0
+
+
+class HelixPiArchitect( ParametricStructure ):
+    """
+    """
+    _PERIODE = 1.1
+
+
+class FlatBetaArchitect( ParametricStructure ):
+    """
+    """
+    _PERIODE = 3.2
+    _ROTATION = -180
+    _MONO = {'N':  [-0.440,  1.200, -0.330],
+             'CA': [-0.000,  0.000, -1.210],
+             'C':  [-0.550, -1.200, -0.330],
+             'O':  [-2.090, -1.300, -0.220]}
+    # CHOP780202 beta-sheet propensity AAindex (Chou-Fasman, 1978b)
+    # TO 0: G -> 0.75; P -> 0.55
+    _AA_STAT = [("A", 0.83), ("L", 1.30), ("R", 0.93), ("K", 0.74), ("N", 0.89),
+                ("M", 1.05), ("D", 0.54), ("F", 1.38), ("C", 1.19), ("P", 0.00),
+                ("Q", 1.10), ("S", 0.75), ("E", 0.37), ("T", 1.19), ("G", 0.00),
+                ("W", 1.37), ("H", 0.87), ("Y", 1.47), ("I", 1.60), ("V", 1.70)]
+
+
+def weighted_choice(choices):
+    values, weights = zip(*choices)
+    total = 0
+    cum_weights = []
+    for w in weights:
+        total += w
+        cum_weights.append(total)
+    x = random() * total
+    i = bisect(cum_weights, x)
+    return values[i]

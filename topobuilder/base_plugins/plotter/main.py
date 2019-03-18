@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 # This Library
 from topobuilder.case import Case
 import topobuilder.core as TBcore
+import topobuilder.utils as TButils
 from . import plot_types as pts
 
 __all__ = ['apply']
@@ -33,9 +34,9 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """Generate visual representations of the Case.
     """
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('--- TB PLUGIN: PLOTTER ---\n')
+    TButil.plugin_title(__file__, len(cases))
 
+    # File management
     if outfile is None:
         outfile = cases[0].main_path.joinpath('images').resolve()
         outfile.mkdir(parents=True, exist_ok=True)

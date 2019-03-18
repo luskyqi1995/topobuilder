@@ -7,69 +7,88 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import getpass
-import os
-from pathlib import Path
-import shutil
-from typing import Optional, Tuple, List, Union
+from typing import Optional, List, Dict
 from string import ascii_uppercase
-import sys
+from operator import itemgetter
+from subprocess import run
 
 # External Libraries
 
 # This Library
 from topobuilder.case import Case
 import topobuilder.core as TBcore
+import topobuilder.utils as TButil
+from topobuilder import plugin_source
 from .analysis import get_steps
-from .core import core
 
 
 __all__ = ['apply', 'case_apply']
 
 
-def apply( cases: List[Case], prtid: int, **kwargs ) -> List[Case]:
+def apply( cases: List[Case],
+           prtid: int,
+           rmsd: Optional[float] = 5.0,
+           **kwargs,
+           ) -> List[Case]:
     """Use MASTER to correct secondary structure placement (smoothing).
     """
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('--- TB PLUGIN: IMASTER ---\n')
-
-    # Get list of PDS structures
-    database = core.get_option('master', 'pds')
-    pds_list = []
-    database = Path(database)
-    if database.is_file():
-        pds_list = [line.strip() for line in open(database).readlines() if len(line.strip()) > 0]
-    elif database.is_dir():
-        pds_list = [str(x) for x in database.glob('*/*.pds')]
-    else:
-        raise ValueError('The provided MASTER database directory/list file cannot be found.')
+    TButil.plugin_title(__file__, len(cases))
 
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('corrections', [])
-        cases[i].data['metadata']['corrections'].append(case_apply(case, pds_list))
+        cases[i] = case_apply(case)
         cases[i] = cases[i].set_protocol_done(prtid)
     return cases
 
 
-def case_apply( case: Case, pds_list: List[str] ) -> str:
+def case_apply( case: Case,
+                rmsd: Optional[float] = 5.0,
+                step: Optional[int] = None,
+                corrections: Optional[Dict] = None ) -> Case:
     """
     """
+    kase = Case(case)
+    corrections = corrections if TBcore.get_option('system', 'jupyter') else None
+    kase.data.setdefault('metadata', {}).setdefault('imaster', {}).setdefault('corrections', {})
+    kase.data.setdefault('metadata', {}).setdefault('corrections', [])
+
     # Interactive MASTER smoothing is only applied to a Case with one single connectivity and already reoriented
-    if case.connectivity_count > 1:
+    if kase.connectivity_count > 1:
         raise ValueError('Interactive MASTER smoothing can only be applied to one connectivity.')
-    if not case['configuration.reoriented'] and case.connectivity_count == 1:
-        case = case.cast_absolute().apply_topologies()[0]
+    if not kase['configuration.reoriented'] and kase.connectivity_count == 1:
+        kase = kase.cast_absolute().apply_topologies()[0]
+
+    # Generate the folder tree for a single connectivity.
+    wfolder = kase.connectivities_paths[0].joinpath('imaster')
+    wfolder.mkdir(parents=True, exist_ok=True)
 
     # Find steps: Tops we will submit 2-layer searches
-    steps = get_steps([x[-1] == 'E' for x in case.architecture_str.split('.')])
+    steps = get_steps([x[-1] == 'E' for x in kase.architecture_str.split('.')])
+    steps = [steps[step], ] if step is not None and TBcore.get_option('system', 'jupyter') else steps
 
-    # Work by layers
-    for step in steps:
-        pass
+    # Work by layers
+    CKase = Case(kase)
+    for i, step in enumerate(steps):
+        # Step working directory
+        stepfolder = wfolder.joinpath('step{:02d}'.format(i + 1))
+        stepfolder.mkdir(parents=True, exist_ok=True)
+        query = stepfolder.joinpath('imaster.query{:02d}.pdb'.format(i + 1))
 
+        # Apply corrections from previous steps and rebuild
+        CKase = CKase.apply_corrections(corrections)
+        with TBcore.on_option_value('system', 'overwrite', True):
+            CKase = plugin_source.load_plugin('builder').case_apply(CKase, connectivity=True)
 
-    # Make slurm file template
-    # print(make_slurm_file(pds_list))
-    return case
+        # Generate structure query
+        layers = set(itemgetter(*step)(ascii_uppercase))
+        sses = [sse for sse in CKase.ordered_structures if sse['id'][0] in layers]
+        structure, _ = TButil.build_pdb_object(sses, 3)
+        TButil.plugin_filemaker('Writing structure {0}'.format(query))
+        structure.write(output_file=str(query), format='pdb', clean=True, force=True)
 
-# apply(Case('test'), '/Volumes/MiniTwo/data/TopoBuilderData/database/master', 'master', 'createPDS', '.', 'serial', 700)
+        # MASTER search
+        run(TButil.createPDS(query))
+        print(TButil.master_best_each(query.with_suffix('.pds'), stepfolder.joinpath('_master'), rmsd))
+
+    kase.data['metadata']['corrections'].append(corrections)
+    return kase
