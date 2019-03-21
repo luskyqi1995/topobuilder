@@ -23,7 +23,7 @@ import numpy as np
 import topobuilder.core as TBcore
 from .plugins import plugin_filemaker
 
-__all__ = ['createPDS', 'master_best_each', 'parse_master_file']
+__all__ = ['createPDS', 'master_best_each', 'parse_master_file', 'pds_database']
 
 pds_file = None
 pds_list = None
@@ -31,7 +31,7 @@ create_exe = None
 master_exe = None
 
 
-def get_master_exes() -> Tuple(str, str):
+def get_master_exes() -> Tuple[str, str]:
     """Provide the path to the MASTER executables.
 
     .. note::
@@ -42,7 +42,7 @@ def get_master_exes() -> Tuple(str, str):
     global master_exe
 
     if create_exe is not None and master_exe is not None:
-        return create_exe, master_exe
+        return master_exe, create_exe
 
     master_exe = TBcore.get_option('master', 'master')
     if not os.access(master_exe, os.X_OK):
@@ -78,7 +78,7 @@ def pds_database( force: Optional[bool] = False ) -> Tuple[Path, List]:
     elif pds_file.is_dir():
         pds_list = [str(x.resolve()) for x in pds_file.glob('*/*.pds')]
         f = NamedTemporaryFile(mode='w', delete=False)
-        plugin_filemaker('Temporary file for PDS database: {}\n'.format(f.name))
+        plugin_filemaker('Temporary file for PDS database: {}'.format(f.name))
         [f.write(x + '\n') for x in pds_list]
         f.close()
         pds_file = Path(f.name)
@@ -121,12 +121,13 @@ def master_best_each( infile: Union[Path, str],
     outdir = Path(outdir)
     if not outdir.is_dir():
         outdir.mkdir(parents=True, exist_ok=True)
-    createbash = '{0} --query {1} --target {2} --rmsdCut {3}  --topN 1 --matchout {4}'
+    createbash = '{0} --query {1} --target {2} --rmsdCut {3}  --topN 1 --matchOut {4}'
 
     cmds = []
     for pds in pds_list:
-        outfile = infile.name.with_suffix(Path(pds).name.with_suffix('') + '.master')
-        cmds.append(createbash.format(master, infile, pds, rmsd, outfile))
+        tid = str(Path(Path(pds).name).with_suffix(''))
+        outfile = outdir.joinpath('{}.master'.format(tid))
+        cmds.append(shlex.split(createbash.format(master, infile, pds, rmsd, outfile)))
     return cmds
 
 

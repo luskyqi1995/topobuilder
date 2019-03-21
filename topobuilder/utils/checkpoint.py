@@ -27,6 +27,8 @@ class GeneralEncoder(json.JSONEncoder):
             return str(o)
         if isinstance(o, GeneratorType):
             return list(o)
+        if isinstance(o, set):
+            return list(o)
         return json.JSONEncoder.default(self, o)
 
 

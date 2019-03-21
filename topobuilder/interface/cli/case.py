@@ -19,6 +19,7 @@ from pathlib import Path
 # This Library
 from topobuilder.case import Case, case_template
 from topobuilder import plugin_source
+import topobuilder.utils as TButil
 
 
 def cli_case_template():
@@ -45,7 +46,7 @@ def cli_case_template():
     options = parser.parse_args()
 
     _, outfile = case_template(**vars(options))
-    print('New case file created at: {}'.format(os.path.abspath(outfile)))
+    TButil.plugin_filemaker('New case file created at: {}'.format(os.path.abspath(outfile)))
 
 
 def cli_absolute_case():
@@ -74,4 +75,5 @@ def cli_absolute_case():
     # Read, transform and write
     case = plugin_source.load_plugin('corrector').apply([Case(Path(options.case)), ], -1, options.corrections)[0]
     case = case.cast_absolute()
-    case.write(options.caseout, format)
+    outfile = case.write(options.caseout, format)
+    TButil.plugin_filemaker('New case file created at: {}'.format(outfile.resolve()))

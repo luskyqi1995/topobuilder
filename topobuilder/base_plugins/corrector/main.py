@@ -44,13 +44,16 @@ def apply_case( case: Case,
     kase = Case(case)
 
     # Make sure we have a list of corrections.
-    if corrections is None:
+    if corrections is None and case['metadata.corrections'] is None:
         return kase
-    if not isinstance(corrections, list):
-        corrections = [corrections, ]
-    for i, c in enumerate(corrections):
-        if isinstance(c, str):
-            corrections[i] = Path(c)
+    if corrections is not None:
+        if not isinstance(corrections, list):
+            corrections = [corrections, ]
+        for i, c in enumerate(corrections):
+            if isinstance(c, str):
+                corrections[i] = Path(c)
+    else:
+        corrections = []
 
     crr = copy.deepcopy(corrections)
     krr = case['metadata.corrections']

@@ -136,7 +136,6 @@ def slurm_pyenv() -> str:
     """
     pypath = Path(sys.executable).parent.joinpath('activate')
     if not os.access(pypath, os.X_OK):
-        return ''
+        return '\n'
     else:
-        return '\n'.join(['source {}'.format(pypath), "export PYTHONPATH=''"])
-
+        return '\n'.join(['source {}'.format(pypath), "export PYTHONPATH=''"]) + '\n'

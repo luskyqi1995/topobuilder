@@ -531,7 +531,7 @@ class Case( object ):
         :param int protocol_id: Identifier of the protocol according to its position.
         """
         if protocol_id == -1:
-            return
+            return self
         if self['configuration.protocols'] is None or len(self['configuration.protocols']) < protocol_id:
             raise IndexError('Trying to access an unspecified protocol.')
 

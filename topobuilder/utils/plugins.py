@@ -9,6 +9,7 @@
 # Standard Libraries
 import os
 import sys
+from typing import Union, List
 
 # External Libraries
 import colorama as cl
@@ -43,7 +44,7 @@ def plugin_warning( text: str ):
 
     :param str text: Warning text.
     """
-    sys.stdout.write(cl.Fore.GREEN + text + '\n')
+    sys.stdout.write(cl.Fore.GREEN + str(text) + '\n')
     if TBcore.get_option('system', 'strict'):
         sys.exit(-1)
 
@@ -54,7 +55,18 @@ def plugin_filemaker( text: str ):
     :param str text: File creation text.
     """
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write(cl.Fore.WHITE + cl.Back.BLUE + 'NEW FILE: ' + text + '\n')
+        sys.stdout.write(cl.Fore.WHITE + cl.Back.BLUE + 'NEW FILE: ' + str(text))
+        sys.stdout.write(cl.Style.RESET_ALL + '\n')
+
+
+def plugin_imagemaker( text: str ):
+    """Highlight the creation of new plot files.
+
+    :param str text: File creation text.
+    """
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write(cl.Fore.GREEN + cl.Back.BLUE + 'NEW PLOT: ' + str(text))
+        sys.stdout.write(cl.Style.RESET_ALL + '\n')
 
 
 def plugin_filereader( text: str ):
@@ -63,4 +75,19 @@ def plugin_filereader( text: str ):
     :param str text: File reading text.
     """
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write(cl.Fore.BLUE + cl.Back.WHITE + 'READ FILE: ' + text + '\n')
+        sys.stdout.write(cl.Fore.BLUE + cl.Back.WHITE + 'READ FILE: ' + str(text))
+        sys.stdout.write(cl.Style.RESET_ALL + '\n')
+
+
+def plugin_bash( text: Union[List[List], List[str]] ):
+    """Show prepared bash statements to execute.
+
+    :param text: List of statements to show.
+    """
+    if TBcore.get_option('system', 'verbose'):
+        if isinstance(text[0], str):
+            sys.stdout.write(cl.Fore.RED + cl.Back.CYAN + 'BASH: ' + ' '.join([str(x) for x in text]))
+        else:
+            for cmd in text:
+                sys.stdout.write(cl.Fore.RED + cl.Back.CYAN + 'BASH: ' + ' '.join([str(x) for x in cmd]) + '\n')
+        sys.stdout.write(cl.Style.RESET_ALL + '\n')
