@@ -79,6 +79,7 @@ def plot_loop_length_distribution( dfloop: pd.DataFrame,
     pick = [int(x.get_text()) for x in ax.get_xticklabels()].index(pick)
     ax.plot(pick, cnt, marker=11, color='black')
     ax.set_title(title)
+    plt.tight_layout()
 
     imagename = Path(str(prefix) + TBcore.get_option('system', 'image'))
     if write:
@@ -108,6 +109,7 @@ def plot_match_bin( master_match: pd.DataFrame,
         pp = int(0 if math.isnan(p.get_height()) else p.get_height())
         ypos = pp + 1000 if pp + 1000 < expected - 500 else pp - 1000
         ax.annotate('{:d}'.format(pp), (p.get_x() + 0.37, ypos))
+    plt.tight_layout()
 
     imagename = Path(str(prefix) + TBcore.get_option('system', 'image'))
     if write:
@@ -166,6 +168,7 @@ def plot_angle_network( network: nx.DiGraph,
     ax.set_xticklabels(sse_list)
     ax.set_xlabel('SSE')
     ax.set_ylabel('zeta angle')
+    plt.tight_layout()
 
     imagename = Path(str(prefix) + TBcore.get_option('system', 'image'))
     if write:
