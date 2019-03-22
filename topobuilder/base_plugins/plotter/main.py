@@ -34,7 +34,7 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """Generate visual representations of the Case.
     """
-    TButil.plugin_title(__file__, len(cases))
+    TButils.plugin_title(__file__, len(cases))
 
     # File management
     if outfile is None:
