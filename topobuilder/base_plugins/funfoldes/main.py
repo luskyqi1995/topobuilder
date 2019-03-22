@@ -93,7 +93,7 @@ def case_apply( case: Case,
         raise ValueError('Specified length of the loops is necessary to execute FunFolDes.')
 
     # Get the structure.
-    case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True)
+    case = plugin_source.load_plugin('builder').case_apply(case, connectivity=True, pick_aa='V')
     sse_list = case.ordered_structures
     pdb, edges = build_pdb_object(sse_list, loop_lengths)
     pdb.write(str(pdb_file), format='pdb', clean=True,
