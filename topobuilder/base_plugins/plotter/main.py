@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 # This Library
 from topobuilder.case import Case
 import topobuilder.core as TBcore
-import topobuilder.utils as TButils
+import topobuilder.utils as TButil
 from . import plot_types as pts
 
 __all__ = ['apply']
