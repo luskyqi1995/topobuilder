@@ -27,6 +27,8 @@ from .plugins import plugin_imagemaker
 __all__ = ['plot_fragment_templates', 'plot_loop_length_distribution', 'plot_match_bin',
            'plot_geometric_distributions', 'plot_angle_network']
 
+plt.rcParams['svg.fonttype'] = 'none'
+
 
 def plot_fragment_templates( dfsmall: Union[FragmentFrame, pd.DataFrame],
                              dflarge: Union[FragmentFrame, pd.DataFrame],

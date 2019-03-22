@@ -106,7 +106,7 @@ class ParametricStructure( object ):
         # Prepare sequence
         sequence = []
         if pick_aa is not None:
-            pick_aa = pick_aa if len(pick_aa) == 1 else alphabet.aminoacids3to1(pick_aa)
+            pick_aa = pick_aa if len(pick_aa) == 3 else alphabet.aminoacids1to3(pick_aa)
             sequence = [pick_aa, ] * self.desc['length']
         else:
             for _ in range(self.desc['length']):
