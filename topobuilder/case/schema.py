@@ -13,11 +13,12 @@ import copy
 from collections import OrderedDict
 
 # External Libraries
+import numpy as np
 from marshmallow import Schema, ValidationError, fields, validates_schema
 from marshmallow.validate import Regexp
 
 # This Library
-from ..__init__ import __version__ as __version__
+from topobuilder._version import get_versions
 
 __all__ = ['CaseSchema', 'CaseError']
 
@@ -121,7 +122,7 @@ class ConfigurationSchema( Schema ):
     flip_first = fields.Boolean(default=False,
                                 metadata='When applying topologies, start by flipping the first SSE.')
     protocols = fields.List(fields.Dict, default={}, metadata='Pipeline of protocols to run.')
-    comments = fields.List(fields.String, default=[__version__],
+    comments = fields.List(fields.String, default=[get_versions()['version']],
                            metadata='Relative vs. absolute coordinates.')
 
 
@@ -159,6 +160,11 @@ class CoordinateSchema( Schema ):
             if i in value:
                 data[i] += value[i]
         return data
+
+    def distance( self, data1: dict, data2: dict ) -> float:
+        """Provide euclidean distance between two coordinates
+        """
+        return np.linalg.norm(np.asarray([data1['x'], data1['y'], data1['z']]) - np.asarray([data2['x'], data2['y'], data2['z']]))
 
 
 class StructureSchema( Schema ):

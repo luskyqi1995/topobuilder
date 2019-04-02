@@ -17,8 +17,8 @@ from pluginbase import PluginBase
 
 # This Library
 from .core import core
-from . import io
 from . import case
+from . import utils
 
 # Plugin System
 # Load all present plugins

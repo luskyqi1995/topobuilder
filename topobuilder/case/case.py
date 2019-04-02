@@ -15,7 +15,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Union, TypeVar
 from collections import OrderedDict
-from itertools import chain
+from itertools import chain, zip_longest
+from string import ascii_uppercase
 
 # External Libraries
 import numpy as np
@@ -244,6 +245,105 @@ class Case( object ):
             return sse
         else:
             return list(chain(*c['topology.architecture']))
+
+    @property
+    def secondary_structure( self ) -> str:
+        """DSSP-like secondary structure definition.
+
+        .. note::
+            This function requires the :class:`Case` to contain a single connectivity.
+
+            This function requires the existence of ``metadata.loop_lengths``.
+
+        :return: DSSP-like secondary structure definition.
+
+        :raises:
+            :CaseLogicError: if ``connectivity_count > 1``.
+            :CaseLogicError: if ``metadata.loop_lengths is None``.
+            :CaseLogicError: if ``abs(len(sse_list) - len(loop_length)) != 1``.
+        """
+        c = self.cast_absolute()
+
+        if c.connectivity_count != 1:
+            raise CaseLogicError('DSSP string can only be obtained from single-connectivity cases.')
+
+        c = c.apply_topologies()[0]
+
+        loop_length = c['metadata.loop_lengths']
+        if loop_length is None:
+            raise CaseLogicError('There is no loop length available.')
+        loop_length = [''.join(['L', ] * x) for x in loop_length]
+
+        sse_list = [''.join([x['type'], ] * x['length']) for x in c.ordered_structures]
+        if abs(len(sse_list) - len(loop_length)) != 1:
+            raise CaseLogicError('Number of loops and sse must differ by one.')
+
+        pieces = [sse_list, loop_length] if len(loop_length) < len(sse_list) else [loop_length, sse_list]
+        return ''.join([x for x in chain(*zip_longest(*pieces)) if x is not None])
+
+    @property
+    def sse_pairing( self ) -> List[str]:
+        """Generate Rosetta-like pairing definitions.
+
+        Check Rosetta's **SetSecStructEnergiesMover** for more info.
+
+        .. note::
+            This function requires the :class:`Case` to contain a single connectivity.
+
+        :return: Three :class:`str`: ``ss_pair``, ``hh_pair`` and ``hss_triplets``.
+
+        :raises:
+            :CaseLogicError: if ``connectivity_count > 1``.
+        """
+        from topobuilder.case.schema import CoordinateSchema
+        c = self.cast_absolute()
+        schema = CoordinateSchema()
+
+        if c.connectivity_count != 1:
+            raise CaseLogicError('DSSP string can only be obtained from single-connectivity cases.')
+
+        c = c.apply_topologies()[0]
+
+        pfl = c.directionality_profile
+        ppfl = {}
+        for i, sse in enumerate(c):
+            ppfl.setdefault(sse[2]['id'], int(pfl[i]))
+
+        ordsse = c.ordered_structures
+        E = [(i + 1, x['id'], ppfl[x['id']]) for i, x in enumerate([x for x in ordsse if x['type'] == 'E'])]
+        H = [(i + 1, x['id'], ppfl[x['id']]) for i, x in enumerate([x for x in ordsse if x['type'] == 'H'])]
+
+        ss_pair = []
+        SS_pair = []
+        for i in range(len(E)):
+            for j in range(i + 1, len(E)):
+                n1, n2 = E[i][1], E[j][1]
+                if n1[0] == n2[0] and abs(int(n1[1]) - int(n2[1])) == 1:
+                    ss_pair.append('{}-{}.{}.99'.format(E[i][0], E[j][0], 'A' if E[i][-1] != E[j][-1] else 'P'))
+                    SS_pair.append((E[i], E[j]))
+
+        hh_pair = []
+        for i, h in enumerate(H):
+            for j in range(i + 1, len(H)):
+                n1, n2 = h[1], H[j][1]
+                ld = abs(ascii_uppercase.find(n1[0]) - ascii_uppercase.find(n2[0]))
+                cd = schema.distance(c.get_sse_by_id(n1)['coordinates'], c.get_sse_by_id(n2)['coordinates'])
+                if ld == 1 and cd < 15:  # Distance defined in Rosetta's HelixPairingFilter
+                        hh_pair.append('{}-{}.{}'.format(h[0], H[j][0], 'A' if h[-1] != H[j][-1] else 'P'))
+
+        hss_triplets = []
+        for ss in SS_pair:
+            for h in H:
+                ld = abs(ascii_uppercase.find(h[1][0]) - ascii_uppercase.find(ss[0][1][0]))
+                if ld <= 1:
+                    cd1 = schema.distance(c.get_sse_by_id(h[1])['coordinates'],
+                                          c.get_sse_by_id(ss[0][1])['coordinates'])
+                    cd2 = schema.distance(c.get_sse_by_id(h[1])['coordinates'],
+                                          c.get_sse_by_id(ss[1][1])['coordinates'])
+                    if cd1 >= 7.5 and cd1 <= 13 and cd2 >= 7.5 and cd2 <= 13:
+                        hss_triplets.append('{},{}-{}'.format(h[0], ss[0][0], ss[1][0]))
+
+        return ';'.join(ss_pair), ';'.join(hh_pair), ';'.join(hss_triplets)
 
     @property
     def is_absolute( self ) -> bool:
