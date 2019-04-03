@@ -160,7 +160,8 @@ def funfoldes( case: Case ) -> str:
         <Add mover="FFL_ffd" />
         <Add filter="rmsd_ffd" />""")]
 
-    bf = PROTOCOL_BasicFilters(case, '_ffd')
+    with TBcore.on_option_value('psipred', 'script', None):
+        bf = PROTOCOL_BasicFilters(case, '_ffd')
     return ScriptPieces({'movers': movers, 'filters': filters,
                          'residueselectors': residueselectors, 'protocols': protocols}) + bf
 
