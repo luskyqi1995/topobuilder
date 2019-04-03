@@ -46,6 +46,8 @@ with core.ifndef():
 
     # For plugins that requires RosettaScripts
     core.register_option('rosetta', 'scripts', None, 'path_in', 'Full path to the rosetta_scripts executable.')
+    core.register_option('psipred', 'script', None, 'path_in',
+                         'Full path to the PSIPRED executable. If present adds PSIPRED to Rosetta reports.')
 
     # There are different levels of configuration files that can be picked.
     # If any configuration file is set up, the priority goes as follows:

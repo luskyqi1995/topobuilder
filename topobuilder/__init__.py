@@ -31,6 +31,9 @@ except KeyError:
 plugin_base = PluginBase(package='topobuilder.plugins')
 plugin_source = plugin_base.make_plugin_source(searchpath=tp_plugin_dirs)
 
+# This Library
+from . import interface
+
 
 class PluginOrderError( Exception ):
     """Raised when plugins expect data from other plugins and do not find it.

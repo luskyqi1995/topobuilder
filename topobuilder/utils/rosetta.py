@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 
 # This Library
 from topobuilder.case import Case
+import topobuilder.core as TBcore
 
 
 __all__ = ['rosettascript', 'funfoldes', 'constraint_design']
@@ -61,7 +62,6 @@ def constraint_minimization(  case: Case, natbias: float ) -> ScriptPieces:
         <AutomaticSheetConstraintGenerator name="cst_sheet_cstmin" sd="2.0" distance="6.1" />
     </AddConstraints>
     <MinMover name="fast_cstmin" scorefxn="sfxn_cstmin" chi="1" bb="1" />
-    <WriteSSEMover name="wsse_cstmin" dssp="1" write_phipsi="1" />
     """), MOVER_SetSecStructEnergies( 'ssse_cstmin', 'sfxn_cstmin', natbias, case )]
 
     protocols = [textwrap.dedent("""\
@@ -69,12 +69,12 @@ def constraint_minimization(  case: Case, natbias: float ) -> ScriptPieces:
     <Add mover="cst_cstmin" />
     <Add mover="ssse_cstmin" />
     <Add mover="fast_cstmin" />
-    <Add mover="wsse_cstmin" />
     <Add filter="rmsd_cstmin" />
     """), ]
 
+    bf = PROTOCOL_BasicFilters(case, '_cstmin')
     return ScriptPieces({'scorefxns': scorefxns, 'movers': movers, 'filters': filters,
-                         'residueselectors': residueselectors, 'protocols': protocols})
+                         'residueselectors': residueselectors, 'protocols': protocols}) + bf
 
 
 def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -> ScriptPieces:
@@ -107,15 +107,13 @@ def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -
               textwrap.dedent("""\
     <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019" taskoperations="layer_design"/>
     """) if layer_design else textwrap.dedent("""\
-    <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019"/>"""),
-              textwrap.dedent("""<WriteSSEMover name="wsse_cstdes" dssp="1" write_phipsi="1" />""")]
+    <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019"/>""")]
 
     protocols = [textwrap.dedent("""\
     <Add mover="spose_cstdes" />
     <Add mover="cst_cstdes" />
     <Add mover="ssse_cstdes" />
     <Add mover="design_cstdes" />
-    <Add mover="wsse_cstdes" />
     <Add filter="rmsd_cstdes" />
     """), ]
 
@@ -152,7 +150,7 @@ def funfoldes( case: Case ) -> str:
         """).format(*case['metadata.fragments.files']), textwrap.dedent("""\
             <Nub reference_name="sketchPose_ffd" residue_selector="piece_ffd" >
                 <Segment order="1" n_term_flex="2" c_term_flex="1" editable="1,2,3"/></Nub>
-            """), textwrap.dedent("""</NubInitioMover><WriteSSEMover name="structure_ffd" dssp="true" />""")]
+            """), textwrap.dedent("""</NubInitioMover>""")]
 
     protocols = [textwrap.dedent("""\
         <Add mover="add_loops_ffd" />
@@ -160,7 +158,6 @@ def funfoldes( case: Case ) -> str:
         <Add mover="makeFrags_ffd" />
         <Add mover="foldCST_ffd" />
         <Add mover="FFL_ffd" />
-        <Add mover="structure_ffd" />
         <Add filter="rmsd_ffd" />""")]
 
     bf = PROTOCOL_BasicFilters(case, '_ffd')
@@ -280,25 +277,51 @@ def PROTOCOL_LayerDesign( case: Case ) -> ScriptPieces:
     return ScriptPieces({'residueselectors': residueselectors, 'taskoperations': taskoperations})
 
 
-def PROTOCOL_BasicFilters( case: Case, suffix: str ) -> ScriptPieces:
+def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     """
     """
     sse = case.secondary_structure
     ssenl = sse.replace('L', 'D')
+
+    residueselectors = textwrap.dedent("""\
+        <Layer name="surface{suffix}" select_core="0" select_boundary="0" select_surface="1" use_sidechain_neighbors="1"/>
+        <Layer name="boundary{suffix}" select_core="0" select_boundary="1" select_surface="0" use_sidechain_neighbors="1"/>
+        <Layer name="core{suffix}" select_core="1" select_boundary="0" select_surface="0" use_sidechain_neighbors="1"/>
+        """).format(suffix)
+
     filters = textwrap.dedent("""\
     <PackStat name="pack{suffix}" confidence="0." />
     <CavityVolume name="cav_vol{suffix}" confidence="0." />
-    <SecondaryStructure name="sse_match{suffix}" use_abego="0" ss="{sse1}"
-        compute_pose_secstruct_by_dssp="true" confidence="0." />
-    <SecondaryStructure name="sse_match_noloops{suffix}" use_abego="0" ss="{sse2}"
-        compute_pose_secstruct_by_dssp="true" confidence="0." />
+    <SecondaryStructure name="sse_match{suffix}" ss="{sse1}" compute_pose_secstruct_by_dssp="true" confidence="0." />
+    <SecondaryStructure name="sse_match_noloops{suffix}" ss="{sse2}" compute_pose_secstruct_by_dssp="true" confidence="0." />
     """).format(sse1=sse, sse2=ssenl, suffix=suffix)
 
+    movers = [textwrap.dedent("""\
+    <LabelPoseFromResidueSelectorMover name="labelcore{suffix}" property="CORE" residue_selector="core{suffix}" />
+    <LabelPoseFromResidueSelectorMover name="labelboundary{suffix}" property="BOUNDARY" residue_selector="boundary{suffix}" />
+    <LabelPoseFromResidueSelectorMover name="labelsurface{suffix}" property="SURFACE" residue_selector="surface{suffix}" />
+    <DisplayPoseLabelsMover name="labeldump{suffix}" use_dssp="1" write="1" />
+    """).format(suffix=suffix), ]
+    if TBcore.get_option('psipred', 'script') is not None:
+        movers.append(textwrap.dedent("""\
+        <WriteSSEMover name="sse_report{suffix}" cmd="{psipred}" dssp="1" write_phipsi="1" />
+        """).format(suffix=suffix, psipred=TBcore.get_option('psipred', 'script')))
+    else:
+        movers.append(textwrap.dedent("""\
+        <WriteSSEMover name="sse_report{suffix}"dssp="1" write_phipsi="1" />
+        """).format(suffix=suffix))
+
     protocols = textwrap.dedent("""\
+    <Add mover="labelcore{suffix}"/>
+    <Add mover="labelboundary{suffix}"/>
+    <Add mover="labelsurface{suffix}"/>
+    <Add mover="labeldump{suffix}"/>
+    <Add mover="sse_report{suffix}"/>
     <Add filter="pack{suffix}" />
     <Add filter="cav_vol{suffix}" />
     <Add filter="sse_match{suffix}" />
     <Add filter="sse_match_noloops{suffix}" />
     """).format(suffix=suffix)
 
-    return ScriptPieces({'filters': [filters, ], 'protocols': [protocols, ]})
+    return ScriptPieces({'residueselectors': [residueselectors, ], 'filters': [filters, ],
+                         'movers': [movers, ], 'protocols': [protocols, ]})

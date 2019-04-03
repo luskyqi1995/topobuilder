@@ -7,3 +7,4 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 from .info import *
+from .protocol import *

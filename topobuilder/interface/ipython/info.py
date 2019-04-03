@@ -18,8 +18,10 @@ import pandas as pd
 from topobuilder import plugin_source
 import topobuilder
 
+__all__ = ['info_plugins']
 
-def info_plugins():
+
+def info_plugins() -> pd.DataFrame:
     """
     """
     data = {'name': [], 'description': [], 'argument': [], 'argument_type': [], 'source': []}
