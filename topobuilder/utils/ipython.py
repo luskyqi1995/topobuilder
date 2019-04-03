@@ -15,7 +15,7 @@ from IPython import get_ipython
 
 # This Library
 
-__all__ = ['exit']
+__all__ = ['IpyExit', 'exit']
 
 
 class IpyExit(SystemExit):

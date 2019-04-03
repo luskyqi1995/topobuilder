@@ -288,7 +288,7 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
         <Layer name="surface{suffix}" select_core="0" select_boundary="0" select_surface="1" use_sidechain_neighbors="1"/>
         <Layer name="boundary{suffix}" select_core="0" select_boundary="1" select_surface="0" use_sidechain_neighbors="1"/>
         <Layer name="core{suffix}" select_core="1" select_boundary="0" select_surface="0" use_sidechain_neighbors="1"/>
-        """).format(suffix)
+        """).format(suffix=suffix)
 
     filters = textwrap.dedent("""\
     <PackStat name="pack{suffix}" confidence="0." />
@@ -303,13 +303,13 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     <LabelPoseFromResidueSelectorMover name="labelsurface{suffix}" property="SURFACE" residue_selector="surface{suffix}" />
     <DisplayPoseLabelsMover name="labeldump{suffix}" use_dssp="1" write="1" />
     """).format(suffix=suffix), ]
-    if TBcore.get_option('psipred', 'script') is not None:
+    if TBcore.get_option('psipred', 'script', in_path_none=True) is not None:
         movers.append(textwrap.dedent("""\
         <WriteSSEMover name="sse_report{suffix}" cmd="{psipred}" dssp="1" write_phipsi="1" />
         """).format(suffix=suffix, psipred=TBcore.get_option('psipred', 'script')))
     else:
         movers.append(textwrap.dedent("""\
-        <WriteSSEMover name="sse_report{suffix}"dssp="1" write_phipsi="1" />
+        <WriteSSEMover name="sse_report{suffix}" dssp="1" write_phipsi="1" />
         """).format(suffix=suffix))
 
     protocols = textwrap.dedent("""\
@@ -325,4 +325,4 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     """).format(suffix=suffix)
 
     return ScriptPieces({'residueselectors': [residueselectors, ], 'filters': [filters, ],
-                         'movers': [movers, ], 'protocols': [protocols, ]})
+                         'movers': movers, 'protocols': [protocols, ]})

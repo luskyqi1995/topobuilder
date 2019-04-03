@@ -9,7 +9,8 @@
 # Standard Libraries
 import os
 import sys
-from typing import Union, List
+from typing import Union, List, Dict
+from functools import wraps
 
 # External Libraries
 import colorama as cl
@@ -91,3 +92,38 @@ def plugin_bash( text: Union[List[List], List[str]] ):
             for cmd in text:
                 sys.stdout.write(cl.Fore.RED + cl.Back.CYAN + 'BASH: ' + ' '.join([str(x) for x in cmd]) + '\n')
         sys.stdout.write(cl.Style.RESET_ALL + '\n')
+
+
+def plugin_conditions( metadata: Dict, allow_multiple_connectivities: bool ):
+    """Check if the :class:`.Case` has reach the appropiate data content to be executed.
+
+    :param dict metadata: Plugin requirements defined by its ``metadata`` function.
+    :param bool allow_multiple_connectivities: Whether or not the plugin can manage multiple
+        connectivities.
+    """
+    def wrap(func):
+        @wraps(func)
+        def wrapper( *args, **kwargs ):
+            # Retrieve the Case.
+            case = kwargs.get('case', args[0])
+            print(case.data)
+
+            if TBcore.get_option('system', 'debug'):
+                sys.stdout.write(cl.Style.DIM + 'Checking viability of plugin {}\n'.format(metadata['name']))
+
+            # Check connectivities
+            if not allow_multiple_connectivities and case.connectivity_count > 1:
+                raise PluginOrderError('Plugin {} can only be applied to one connectivity.'.format(metadata['name']))
+
+            # Check metadata
+            for tag in metadata['Itags']:
+                if case['metadata.{}'.format(tag)] is None:
+                    raise PluginOrderError('Missing info from metadata.{}'.format(tag))
+            return func(*args, **kwargs)
+        return wrapper
+    return wrap
+
+
+class PluginOrderError( Exception ):
+    """Raised when plugins expect data from other plugins and do not find it.
+    """

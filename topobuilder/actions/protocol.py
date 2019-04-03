@@ -43,8 +43,10 @@ def protocol( case: Union[str, Path, Dict, Case],
         protocol = str(Path(protocol).resolve())
         try:
             protocols = json.loads("".join([x.strip() for x in open(protocol).readlines()]))
+            case_format = 'json'
         except json.JSONDecodeError:
             protocols = yaml.load(open(protocol))
+            case_format = 'yaml'
 
     # Check requested plugins (avoid time is something is wrong)
     for i, ptcl in enumerate(protocols):
@@ -59,6 +61,6 @@ def protocol( case: Union[str, Path, Dict, Case],
         if not ptcl['status']:
             cases = plugin_source.load_plugin(ptcl['name']).apply(cases, prtid=i, **ptcl)
 
-    # for c in cases:
-    #     c.write()
+    for c in cases:
+        c.write(format=case_format)
     return cases

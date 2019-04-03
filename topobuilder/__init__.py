@@ -35,11 +35,6 @@ plugin_source = plugin_base.make_plugin_source(searchpath=tp_plugin_dirs)
 from . import interface
 
 
-class PluginOrderError( Exception ):
-    """Raised when plugins expect data from other plugins and do not find it.
-    """
-
-
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
