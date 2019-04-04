@@ -7,7 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-from typing import List, Union
+from typing import List, Union, Dict
 import sys
 import copy
 
@@ -18,14 +18,33 @@ from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
 
-__all__ = ['apply', 'apply_case']
+
+__all__ = ['metadata', 'apply', 'case_apply']
+
+
+def metadata() -> Dict:
+    """Plugin description.
+
+    It includes:
+
+    - ``name``: The plugin identifier.
+    - ``Itags``: The metadata tags neccessary to execute.
+    - ``Otags``: The metadata tags generated after a successful execution.
+    - ``Isngl``: When :data:`True`, input requires single connectivity.
+    - ``Osngl``: When :data:`True`, output guarantees single connectivity.
+    """
+    return {'name': 'nomenclator',
+            'Itags': [],
+            'Otags': [],
+            'Isngl': False,
+            'Osngl': False}
 
 
 def apply( cases: List[Case],
            prtid: int,
            subnames: Union[str, List[str]],
            **kwargs ) -> List[Case]:
-    """Add subnames to a list of Case.
+    """Add subnames to a list of Case, defining the folder configuration.
 
     :param cases: List of :class:`.Case` to execute.
 
@@ -34,16 +53,17 @@ def apply( cases: List[Case],
     TButil.plugin_title(__file__, len(cases))
 
     for i, case in enumerate(cases):
-        cases[i] = apply_case(case, subnames)
+        cases[i] = case_apply(case, subnames)
         cases[i] = cases[i].set_protocol_done(prtid)
 
     return cases
 
 
-def apply_case( case: Case,
+@TButil.plugin_conditions(metadata())
+def case_apply( case: Case,
                 subnames: Union[str, List[str]]
                 ) -> Case:
-    """Add subnames to a Case.
+    """Add subnames to a Case, defining the folder configuration.
 
     :param case: Target :class:`.Case`.
     :param subnames: List of or subname to append.
@@ -69,4 +89,5 @@ def apply_case( case: Case,
 
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Renamed case {} to {}\n'.format(case.name, kase.name))
+
     return kase

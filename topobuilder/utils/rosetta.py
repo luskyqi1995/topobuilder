@@ -49,11 +49,11 @@ def constraint_minimization(  case: Case, natbias: float ) -> ScriptPieces:
 
     filters = [textwrap.dedent("""\
     <RmsdFromResidueSelectorFilter name="rmsd_cstmin" reference_selector="sse_cstmin"
-            reference_name="eminPose" query_selector="sse_cstmin" confidence="0." />
+            reference_name="eminPose_cstmin" query_selector="sse_cstmin" confidence="0." />
     """), ]
 
     movers = [textwrap.dedent("""\
-    <SavePoseMover name="spose_cstmin" reference_name="eminPose" restore_pose="0" />
+    <SavePoseMover name="spose_cstmin" reference_name="eminPose_cstmin" restore_pose="0" />
     <AddConstraints name="cst_cstmin" >
         <SegmentedAtomPairConstraintGenerator name="cst_seg_cstmin" residue_selector="sse_cstmin" >
             <Outer sd="2.0" weight="1." ca_only="1"
@@ -93,11 +93,11 @@ def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -
 
     filters = [textwrap.dedent("""\
     <RmsdFromResidueSelectorFilter name="rmsd_cstdes" reference_selector="sse_cstdes"
-            reference_name="eminPose" query_selector="sse_cstdes" confidence="0." />
+            reference_name="eminPose_cstdes" query_selector="sse_cstdes" confidence="0." />
     """), ]
 
     movers = [textwrap.dedent("""\
-    <SavePoseMover name="spose_cstdes" reference_name="eminPose" restore_pose="0" />
+    <SavePoseMover name="spose_cstdes" reference_name="eminPose_cstdes" restore_pose="0" />
     <AddConstraints name="cst_cstdes" >
         <SegmentedAtomPairConstraintGenerator name="cst_seg_cstdes" residue_selector="sse_cstdes" >
             <Outer sd="2.0" weight="0.5" ca_only="1" use_harmonic="1" unweighted="0" max_distance="40" />
@@ -132,7 +132,7 @@ def funfoldes( case: Case ) -> str:
 
     filters = [textwrap.dedent("""\
         <RmsdFromResidueSelectorFilter name="rmsd_ffd" reference_selector="sse_ffd"
-            reference_name="sketchPose" query_selector="sse_ffd" confidence="0." />""")]
+            reference_name="sketchPose_ffd" query_selector="sse_ffd" confidence="0." />""")]
 
     movers = [MOVER_PeptideStubMover('add_loops_ffd', case), textwrap.dedent("""\
         <SavePoseMover name="save_ffd" reference_name="sketchPose_ffd" restore_pose="0" />
