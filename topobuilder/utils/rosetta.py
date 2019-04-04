@@ -105,7 +105,7 @@ def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -
         <AutomaticSheetConstraintGenerator name="cst_sheet_cstdes" sd="2.0" distance="6.1" />
     </AddConstraints>"""), MOVER_SetSecStructEnergies( 'ssse_cstdes', 'sfxn_cstdes', natbias, case ),
               textwrap.dedent("""\
-    <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019" taskoperations="layer_design"/>
+    <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019" task_operations="layer_design"/>
     """) if layer_design else textwrap.dedent("""\
     <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019"/>""")]
 
