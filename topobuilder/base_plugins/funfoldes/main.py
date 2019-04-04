@@ -20,7 +20,6 @@ from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
 from . import utils
-# from topobuilder import PluginOrderError
 
 
 __all__ = ['metadata', 'apply', 'case_apply']
@@ -34,10 +33,14 @@ def metadata() -> Dict:
     - ``name``: The plugin identifier.
     - ``Itags``: The metadata tags neccessary to execute.
     - ``Otags``: The metadata tags generated after a successful execution.
+    - ``Isngl``: When :data:`True`, input requires single connectivity.
+    - ``Osngl``: When :data:`True`, output guarantees single connectivity.
     """
     return {'name': 'funfoldes',
             'Itags': ['loop_lengths', 'fragments'],
-            'Otags': ['funfoldes']}
+            'Otags': ['funfoldes'],
+            'Isngl': True,
+            'Osngl': True}
 
 
 def apply( cases: List[Case],
@@ -60,7 +63,7 @@ def apply( cases: List[Case],
     return cases
 
 
-@TButil.plugin_conditions(metadata(), False)
+@TButil.plugin_conditions(metadata())
 def case_apply( case: Case,
                 nstruct: Optional[int] = 2000,
                 natbias: Optional[float] = 2.5,

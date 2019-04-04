@@ -20,7 +20,6 @@ import pandas as pd
 from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
-from topobuilder import PluginOrderError
 
 
 __all__ = ['apply', 'case_apply']
@@ -87,7 +86,7 @@ def funfoldes2pdb( case: Case, wfolder: Path ) -> List:
     """
     silent_files = case['metadata.funfoldes.silent_files.folding']
     if silent_files is None:
-        raise PluginOrderError('There is no output data from the funfoldes plugin.')
+        raise TButil.PluginOrderError('There is no output data from the funfoldes plugin.')
 
     extract_pdb = Path(str(Path(TBcore.get_option('rosetta', 'scripts')).resolve()).replace('rosetta_scripts.', 'extract_pdbs.'))
     if not extract_pdb.is_file() or not os.access(str(extract_pdb), os.X_OK):

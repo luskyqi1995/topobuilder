@@ -7,25 +7,17 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import getpass
-import os
 from pathlib import Path
-import shutil
 from typing import Optional, Tuple, List, Union
-from string import ascii_uppercase
 import sys
-from itertools import chain, zip_longest
 
 # External Libraries
 import pandas as pd
 
 # This Library
-from topobuilder import PluginOrderError
 from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
-from topobuilder.utils import build_pdb_object
-from topobuilder import plugin_source
 from rstoolbox.io import parse_rosetta_fragments, write_rosetta_fragments
 
 
@@ -92,7 +84,7 @@ def loop_master_protocol( case: Case, folders: Path ) -> Tuple[str, str]:
     """
     lf = case['metadata.loop_fragments']
     if lf is None:
-        raise PluginOrderError('Data that should be loaded through loop_master is not found.')
+        raise TButil.PluginOrderError('Data that should be loaded through loop_master is not found.')
 
     for i, loop in enumerate(lf):
         if i == 0:

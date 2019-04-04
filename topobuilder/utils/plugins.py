@@ -94,12 +94,10 @@ def plugin_bash( text: Union[List[List], List[str]] ):
         sys.stdout.write(cl.Style.RESET_ALL + '\n')
 
 
-def plugin_conditions( metadata: Dict, allow_multiple_connectivities: bool ):
+def plugin_conditions( metadata: Dict ):
     """Check if the :class:`.Case` has reach the appropiate data content to be executed.
 
     :param dict metadata: Plugin requirements defined by its ``metadata`` function.
-    :param bool allow_multiple_connectivities: Whether or not the plugin can manage multiple
-        connectivities.
     """
     def wrap(func):
         @wraps(func)
@@ -112,7 +110,7 @@ def plugin_conditions( metadata: Dict, allow_multiple_connectivities: bool ):
                 sys.stdout.write(cl.Style.DIM + 'Checking viability of plugin {}\n'.format(metadata['name']))
 
             # Check connectivities
-            if not allow_multiple_connectivities and case.connectivity_count > 1:
+            if metadata['Isngl'] and case.connectivity_count > 1:
                 raise PluginOrderError('Plugin {} can only be applied to one connectivity.'.format(metadata['name']))
 
             # Check metadata
