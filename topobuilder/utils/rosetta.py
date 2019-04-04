@@ -156,7 +156,7 @@ def funfoldes( case: Case ) -> str:
         <Add mover="add_loops_ffd" />
         <Add mover="save_ffd" />
         <Add mover="makeFrags_ffd" />
-        <Add mover="foldCST_ffd" />
+        <Add mover="foldingCST_ffd" />
         <Add mover="FFL_ffd" />
         <Add filter="rmsd_ffd" />""")]
 
