@@ -85,7 +85,7 @@ def case_apply( case: Case,
 def funfoldes2pdb( case: Case, wfolder: Path ) -> List:
     """
     """
-    silent_files = case['metadata.funfoldes.silent_files']
+    silent_files = case['metadata.funfoldes.silent_files.folding']
     if silent_files is None:
         raise PluginOrderError('There is no output data from the funfoldes plugin.')
 
