@@ -104,7 +104,6 @@ def plugin_conditions( metadata: Dict ):
         def wrapper( *args, **kwargs ):
             # Retrieve the Case.
             case = kwargs.get('case', args[0])
-            print(case.data)
 
             if TBcore.get_option('system', 'debug'):
                 sys.stdout.write(cl.Style.DIM + 'Checking viability of plugin {}\n'.format(metadata['name']))

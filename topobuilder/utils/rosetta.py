@@ -282,7 +282,6 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     """
     """
     sse = case.secondary_structure
-    ssenl = sse.replace('L', 'D')
 
     residueselectors = textwrap.dedent("""\
         <Layer name="surface{suffix}" select_core="0" select_boundary="0" select_surface="1" use_sidechain_neighbors="1"/>
@@ -294,8 +293,7 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     <PackStat name="pack{suffix}" confidence="0." />
     <CavityVolume name="cav_vol{suffix}" confidence="0." />
     <SecondaryStructure name="sse_match{suffix}" ss="{sse1}" compute_pose_secstruct_by_dssp="true" confidence="0." />
-    <SecondaryStructure name="sse_match_noloops{suffix}" ss="{sse2}" compute_pose_secstruct_by_dssp="true" confidence="0." />
-    """).format(sse1=sse, sse2=ssenl, suffix=suffix)
+    """).format(sse1=sse, suffix=suffix)
 
     movers = [textwrap.dedent("""\
     <LabelPoseFromResidueSelectorMover name="labelcore{suffix}" property="CORE" residue_selector="core{suffix}" />
