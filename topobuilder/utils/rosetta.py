@@ -319,7 +319,6 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     <Add filter="pack{suffix}" />
     <Add filter="cav_vol{suffix}" />
     <Add filter="sse_match{suffix}" />
-    <Add filter="sse_match_noloops{suffix}" />
     """).format(suffix=suffix)
 
     return ScriptPieces({'residueselectors': [residueselectors, ], 'filters': [filters, ],
