@@ -103,7 +103,7 @@ def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -
             <Outer sd="2.0" weight="0.5" ca_only="1" use_harmonic="1" unweighted="0" max_distance="40" />
         </SegmentedAtomPairConstraintGenerator>
         <AutomaticSheetConstraintGenerator name="cst_sheet_cstdes" sd="2.0" distance="6.1" />
-    </AddConstraints>"""), MOVER_SetSecStructEnergies( 'ssse_cstdes', 'sfxn_cstdes', natbias, case ),
+    </AddConstraints>"""), #MOVER_SetSecStructEnergies( 'ssse_cstdes', 'sfxn_cstdes', natbias, case ),
               textwrap.dedent("""\
     <FastDesign name="design_cstdes" scorefxn="sfxn_cstdes" relaxscript="MonomerDesign2019" task_operations="layer_design"/>
     """) if layer_design else textwrap.dedent("""\
@@ -112,7 +112,7 @@ def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -
     protocols = [textwrap.dedent("""\
     <Add mover="spose_cstdes" />
     <Add mover="cst_cstdes" />
-    <Add mover="ssse_cstdes" />
+    Add mover="ssse_cstdes" />
     <Add mover="design_cstdes" />
     <Add filter="rmsd_cstdes" />
     """), ]
