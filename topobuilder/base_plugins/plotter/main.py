@@ -7,7 +7,7 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 from pathlib import Path
 import os
 import sys
@@ -21,9 +21,30 @@ import topobuilder.core as TBcore
 import topobuilder.utils as TButil
 from . import plot_types as pts
 
-__all__ = ['apply']
+__all__ = ['metadata', 'apply']
 
 _PLT_TYPES_ = ['sketchXZ', 'sketchXY']
+
+
+def metadata() -> Dict:
+    """Plugin description.
+
+    It includes:
+
+    - ``name``: The plugin identifier.
+    - ``Itags``: The metadata tags neccessary to execute.
+    - ``Otags``: The metadata tags generated after a successful execution.
+    - ``Isngl``: When :data:`True`, input requires single connectivity.
+    - ``Osngl``: When :data:`True`, output guarantees single connectivity.
+    """
+    def isngl( count ):
+        return True
+
+    return {'name': 'plotter',
+            'Itags': [],
+            'Otags': [],
+            'Isngl': isngl,
+            'Osngl': False}
 
 
 def apply( cases: List[Case],
@@ -45,6 +66,7 @@ def apply( cases: List[Case],
 
     outformat = TBcore.get_option('system', 'image')
 
+    # Checking available plot_types
     plot_types = [_PLT_TYPES_[0], ] if plot_types is None else plot_types
     if len(set(plot_types).difference(_PLT_TYPES_)) > 0:
         raise ValueError('Requested unknown plot format. '
@@ -64,8 +86,8 @@ def apply( cases: List[Case],
         fig, ax = getattr(pts, ptype)(cases, **kwargs.pop(ptype, {}))
         plt.tight_layout()
         plt.savefig(str(thisoutfile), dpi=300)
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Creating new image at: {}\n'.format(str(thisoutfile)))
+
+        TButil.plugin_imagemaker('Creating new image at: {}'.format(str(thisoutfile)))
 
     for i, case in enumerate(cases):
         cases[i] = case.set_protocol_done(prtid)

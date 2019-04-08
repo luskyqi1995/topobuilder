@@ -19,7 +19,29 @@ from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
 
-__all__ = ['apply']
+
+__all__ = ['metadata', 'apply', 'case_apply']
+
+
+def metadata() -> Dict:
+    """Plugin description.
+
+    It includes:
+
+    - ``name``: The plugin identifier.
+    - ``Itags``: The metadata tags neccessary to execute.
+    - ``Otags``: The metadata tags generated after a successful execution.
+    - ``Isngl``: Funtion on the expected input connectivity.
+    - ``Osngl``: When :data:`True`, output guarantees single connectivity.
+    """
+    def isngl( count ):
+        return True
+
+    return {'name': 'nomenclator',
+            'Itags': [],
+            'Otags': [],
+            'Isngl': isngl,
+            'Osngl': False}
 
 
 def apply( cases: List[Case],
@@ -31,12 +53,13 @@ def apply( cases: List[Case],
     TButil.plugin_title(__file__, len(cases))
 
     for i, case in enumerate(cases):
-        cases[i] = apply_case(case, corrections)
+        cases[i] = case_apply(case, corrections)
         cases[i] = cases[i].set_protocol_done(prtid)
     return cases
 
 
-def apply_case( case: Case,
+@TButil.plugin_conditions(metadata())
+def case_apply( case: Case,
                 corrections: Optional[Union[str, Dict, Path, List]] = None
                 ) -> Case:
     """

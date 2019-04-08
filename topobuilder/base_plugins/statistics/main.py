@@ -9,9 +9,11 @@
 # Standard Libraries
 import os
 import sys
+import textwrap
 from pathlib import Path
 from typing import List
 from subprocess import run
+from inspect import getmembers, isfunction
 
 # External Libraries
 import pandas as pd
@@ -20,9 +22,11 @@ import pandas as pd
 from topobuilder.case import Case
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
+from . import orders
 
 
 __all__ = ['apply', 'case_apply']
+
 
 
 def apply( cases: List[Case],
@@ -32,22 +36,31 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """Perform a define statistic analysis on a given source.
     """
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('--- TB PLUGIN: STATISTICS ---\n')
+    TButil.plugin_title(__file__, len(cases))
 
     # Execute for each case
     for i, case in enumerate(cases):
-        cases[i] = case_apply(case, source, analysis)
+        cases[i] = case_apply(case, source, analysis, **kwargs)
         cases[i] = cases[i].set_protocol_done(prtid)
     return cases
 
 
 def case_apply( case: Case,
                 source: str,
-                analysis: str ) -> str:
+                analysis: str,
+                **kwargs ) -> str:
     """
     """
     case = Case(case)
+
+    def not_found(*args, **kwargs):
+        nonlocal source
+        nonlocal analysis
+        raise ImportError(textwrap.dedent("""\
+            The requested combination of source: {} and analysis {} cannot be found.
+            """).format(source, analysis))
+
+    return getattr(orders, '{}_2_{}'.format(source, analysis), not_found)(case, **kwargs)
 
     # Generate the folder tree for a single connectivity.
     wfolder = case.connectivities_paths[0].joinpath('statistic')
@@ -99,7 +112,7 @@ def funfoldes2pdb( case: Case, wfolder: Path ) -> List:
     else:
         indir = str(wfolder.joinpath('${SLURM_ARRAY_TASK_ID}'))
         cmd = ['srun', extract_pdb, '-in:file:silent']
-        cmd.append(os.path.commonprefix([str(x) for x in silent_files]) + '${SLURM_ARRAY_TASK_ID}.silent')
+        cmd.append(os.path.commonprefix([str(x) for x in silent_files]) + '${SLURM_ARRAY_TASK_ID}_funfol.silent')
         cmd.extend(['-out:prefix', str(indir) + '/'])
     return [['mkdir', '-p', indir] if TBcore.get_option('slurm', 'use') else '', cmd]
 

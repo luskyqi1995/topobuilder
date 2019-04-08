@@ -30,13 +30,16 @@ def metadata() -> Dict:
     - ``name``: The plugin identifier.
     - ``Itags``: The metadata tags neccessary to execute.
     - ``Otags``: The metadata tags generated after a successful execution.
-    - ``Isngl``: When :data:`True`, input requires single connectivity.
+    - ``Isngl``: Funtion on the expected input connectivity.
     - ``Osngl``: When :data:`True`, output guarantees single connectivity.
     """
+    def isngl( count ):
+        return True
+
     return {'name': 'nomenclator',
             'Itags': [],
             'Otags': [],
-            'Isngl': False,
+            'Isngl': isngl,
             'Osngl': False}
 
 
@@ -75,6 +78,11 @@ def case_apply( case: Case,
     # Unify subnames behaviour for 1 to N
     if not isinstance(subnames, list):
         subnames = [subnames, ]
+
+    # Reserved keywords
+    for i, sn in enumerate(subnames):
+        if sn == 'architecture':
+            subnames[i] = kase.architecture_str.replace('.', '')
 
     # Check name was not already added.
     sn = copy.deepcopy(subnames)

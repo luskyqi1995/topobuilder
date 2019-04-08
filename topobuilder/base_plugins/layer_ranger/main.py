@@ -7,9 +7,11 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-from typing import List, Dict
-import copy
+from typing import List, Dict, Tuple
+import itertools
 import sys
+import textwrap
+from string import ascii_uppercase
 
 # External Libraries
 import numpy as np
@@ -17,8 +19,38 @@ import numpy as np
 # This Library
 from topobuilder.case import Case
 import topobuilder.core as TBcore
+import topobuilder.utils as TButil
 
-__all__ = ['apply']
+__all__ = ['metadata', 'apply', 'case_apply']
+
+
+def metadata() -> Dict:
+    """Plugin description.
+
+    It includes:
+
+    - ``name``: The plugin identifier.
+    - ``Itags``: The metadata tags neccessary to execute.
+    - ``Otags``: The metadata tags generated after a successful execution.
+    - ``Isngl``: Funtion on the expected input connectivity.
+    - ``Osngl``: When :data:`True`, output guarantees single connectivity.
+    - ``Ecnd``: If present, apply extra cheching functions.
+    """
+    def isngl( count: int ) -> bool:
+        return count == 0
+
+    def extra( case: Case ) -> Tuple[str, bool]:
+        msg = textwrap.dedent("""\
+        layer_ranger will delete all previous data from the topology.
+        Only empty cases are allowed.""")
+        return msg, not case.is_empty
+
+    return {'name': 'nomenclator',
+            'Itags': [],
+            'Otags': [],
+            'Isngl': isngl,
+            'Osngl': False,
+            'Ecnd': extra}
 
 
 def apply( cases: List[Case],
@@ -27,33 +59,38 @@ def apply( cases: List[Case],
            **kwargs ) -> List[Case]:
     """Explore multiple ranges of different secondary structures in each layer.
     """
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('--- TB PLUGIN: LAYER_RANGER ---\n')
 
-    expected = []
-    for layer in sorted(ranger):
-        a, b = ranger[layer]
-        expected.append(b - a + 1)
+    TButil.plugin_title(__file__, len(cases))
+
+    new_cases = []
+    for i, case in enumerate(cases):
+        new_cases.extend(case_apply(case, ranger))
+
+    for i, case in enumerate(new_cases):
+        new_cases[i] = case.set_protocol_done(prtid)
+
+    TButil.plugin_case_count(len(new_cases))
+    return new_cases
+
+
+@TButil.plugin_conditions(metadata())
+def case_apply( case: Case, ranger: Dict ) -> List[Case]:
+    """
+    """
+    case = Case(case)
+
+    todo = []
+    for i, layer in enumerate(ranger):
+        sse, rng = layer.split('.')
+        rng = [int(x) for x in rng.split('-')]
         if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Applying ranges {0}-{1} to layer {2}\n'.format(a, b, layer))
-    expected = np.prod(expected)
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Starting from {} cases\n'.format(len(cases)))
+            sys.stdout.write('Applying {} to {} {} to layer {}\n'.format(*rng, sse, ascii_uppercase[i]))
+        todo.append(['{}{}'.format(i, sse) for i in range(rng[0], rng[1] + 1)])
 
-    for case in cases:
-        if case.connectivity_count != 0:
-            raise ValueError('Cannot apply layer_ranger to topologies with defined connectivity')
+    def empties( lst ):
+        return [x for x in lst if not x.startswith('0')]
 
-    ncases = len(cases)
-    new_cases = copy.deepcopy(cases)
-    for ilayer, layer in enumerate(sorted(ranger.keys())):
-        lcases = []
-        ncases = len(new_cases)
-        for i in range(ranger[layer][0], ranger[layer][1] + 1):
-            for j in range(len(new_cases)):
-                lcases.append(new_cases[j].set_type_for_layer(layer, i))
-        new_cases = new_cases[ncases:]
-        new_cases.extend(lcases)
-    if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Generated a total of {} cases\n'.format(len(new_cases)))
+    new_cases = []
+    for architecture in map(empties, itertools.product(*todo)):
+        new_cases.append(Case(case.name).add_architecture('.'.join(architecture)))
     return new_cases

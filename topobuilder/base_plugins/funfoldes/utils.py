@@ -174,8 +174,8 @@ def execute(data: Dict, wpaths: Dict) -> Dict:
 def update_data( data: Dict, wpaths: Dict ) -> Dict:
     """Update data to link final files.
     """
-    data['silent_files']['folding'] = list(wpaths['outdir'].glob('*.silent'))
-    data['silent_files']['design'] = list(wpaths['outdir'].glob('*.silent'))
+    data['silent_files']['folding'] = list(wpaths['outdir'].glob('*_funfol.silent'))
+    data['silent_files']['design'] = list(wpaths['outdir'].glob('*_des.silent'))
     data['minisilent']['folding'] = wpaths['main'].joinpath('output_funfol.minisilent.gz')
     data['minisilent']['design'] = wpaths['main'].joinpath('output_des.minisilent.gz')
     for k in data['minisilent']:

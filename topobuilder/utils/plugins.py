@@ -36,8 +36,18 @@ def plugin_title( plugin_path: str, cases: int ):
     sys.stdout.write(cl.Style.BRIGHT + name + '\n')
     sys.stdout.write(cl.Style.BRIGHT + bord + '\n')
 
+    plugin_case_count(cases, 'i')
+
+
+def plugin_case_count( cases: int, io='o' ):
+    """Print on-screen the current number of cases.
+
+    :param int cases: Current number of cases.
+    :param str io: If ``i``: input. If ``o``: output
+    """
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write(cl.Style.DIM + '* batch applied to {:03d} cases\n\n'.format(cases))
+        io = 'batch applied to' if io == 'i' else 'generated a total of'
+        sys.stdout.write(cl.Style.DIM + '* {} {:03d} cases\n\n'.format(io, cases))
 
 
 def plugin_warning( text: str ):
@@ -109,13 +119,20 @@ def plugin_conditions( metadata: Dict ):
                 sys.stdout.write(cl.Style.DIM + 'Checking viability of plugin {}\n'.format(metadata['name']))
 
             # Check connectivities
-            if metadata['Isngl'] and case.connectivity_count > 1:
+            if not metadata['Isngl'](case.connectivity_count):
                 raise PluginOrderError('Plugin {} can only be applied to one connectivity.'.format(metadata['name']))
 
             # Check metadata
             for tag in metadata['Itags']:
                 if case['metadata.{}'.format(tag)] is None:
                     raise PluginOrderError('Missing info from metadata.{}'.format(tag))
+
+            # Extras
+            if 'Ecnd' in metadata:
+                msg, err = metadata['Ecnd'](case)
+                if err:
+                    raise PluginOrderError(msg)
+
             return func(*args, **kwargs)
         return wrapper
     return wrap

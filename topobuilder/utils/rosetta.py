@@ -112,10 +112,11 @@ def constraint_design( case: Case, natbias: float, layer_design: bool = True ) -
     protocols = [textwrap.dedent("""\
     <Add mover="spose_cstdes" />
     <Add mover="cst_cstdes" />
-    Add mover="ssse_cstdes" />
     <Add mover="design_cstdes" />
     <Add filter="rmsd_cstdes" />
     """), ]
+
+    ##  Add mover="ssse_cstdes" />
 
     ld = PROTOCOL_LayerDesign(case) if layer_design else ScriptPieces()
     bf = PROTOCOL_BasicFilters(case, '_cstdes')

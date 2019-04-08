@@ -11,6 +11,8 @@ import os
 import re
 import json
 import string
+import math
+import textwrap
 from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Tuple, Dict, List, Union, TypeVar
@@ -42,7 +44,6 @@ class Case( object ):
     def __init__( self, init: Optional[Union[str, dict, Path, C]] = None ):
         self.data = OrderedDict()
         self.schema = CaseSchema()
-
         if isinstance(init, str):
             self.data = OrderedDict({'configuration': {'name': init}})
         elif isinstance(init, Case):
@@ -346,6 +347,10 @@ class Case( object ):
         return ';'.join(ss_pair), ';'.join(hh_pair), ';'.join(hss_triplets)
 
     @property
+    def is_empty( self ) -> bool:
+        return len(self.shape) == 0
+
+    @property
     def is_absolute( self ) -> bool:
         cr = self['configuration.relative']
         if cr is not None:
@@ -535,12 +540,23 @@ class Case( object ):
                 c.data['topology']['connectivity'].append(conn)
         return c.check()
 
+    def add_secured_topologies( self, topologies: List[C] ) -> C:
+        """
+        """
+        c = Case(self.data)
+        c.data['topology'].setdefault('connectivity', [])
+        c.data['topology']['connectivity'] = topologies
+        return c
+
     def cast_absolute( self ) -> C:
         """Transform a ``relative`` :class:`.CaseSchema` into an ``absolute`` one.
         """
         c = Case(self.data)
         if self.is_absolute:
             return c
+
+        if c.is_empty:
+            raise CaseLogicError('An empty case cannot be made absolute.')
 
         c.data['configuration']['relative'] = False
         sschema = StructureSchema()
@@ -697,6 +713,7 @@ class Case( object ):
 
         raise NotImplementedError()
 
+
     def __iter__( self ):
         architecture = self['topology.architecture']
         for i, layer in enumerate(architecture):
@@ -718,6 +735,45 @@ class Case( object ):
 
     def __len__( self ):
         return int(np.sum(np.asarray(self.shape)))
+
+    def _ipython_display_( self ):
+        from IPython.core.display import display, HTML
+        from jinja2 import Template
+        sse = {'H': 0, 'E': 0}
+
+        if not self.is_empty:
+            for x in self.architecture_str.split('.'):
+                sse.setdefault(x[-1], 0)
+                sse[x[-1]] += int(x[:-1])
+        tplt = Template(textwrap.dedent("""\
+            <table class="case_table" style="font-family:monospace;">
+                <tr><th style="text-align:center;" colspan="3"><b>{{n}}</b></th></tr>
+                <tr>
+                    <td style="text-align:left;" colspan="2"><b>Layers</b></td>
+                    <td style="text-align:center;">{{y}}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:left;" rowspan="2"><b>SSE</b></td>
+                    <td style="text-align:center;"><b>H</b></td>
+                    <td style="text-align:center;">{{H}}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:center;"><b>E</b></td>
+                    <td style="text-align:center;">{{E}}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:left;" rowspan="2"><b>Folds</b></td>
+                    <td style="text-align:center;"><b>Potential</b></td>
+                    <td style="text-align:center;">{{f}}</td>
+                </tr>
+                <tr>
+                    <td style="text-align:center;"><b>Specified</b></td>
+                    <td style="text-align:center;">{{s}}</td>
+                </tr>
+            </table>""")).render(n=self.name, **sse, y=len(self.shape),
+                                 f=math.factorial(sum(sse[x] for x in sse)),
+                                 s=self.connectivity_count)
+        display(HTML(tplt))
 
 
 def configuration_corrections( corrections: dict, case: Case) -> Dict:

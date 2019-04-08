@@ -33,13 +33,16 @@ def metadata() -> Dict:
     - ``name``: The plugin identifier.
     - ``Itags``: The metadata tags neccessary to execute.
     - ``Otags``: The metadata tags generated after a successful execution.
-    - ``Isngl``: When :data:`True`, input requires single connectivity.
+    - ``Isngl``: Funtion on the expected input connectivity.
     - ``Osngl``: When :data:`True`, output guarantees single connectivity.
     """
+    def isngl( count ):
+        return count == 1
+
     return {'name': 'funfoldes',
             'Itags': ['loop_lengths', 'fragments'],
             'Otags': ['funfoldes'],
-            'Isngl': True,
+            'Isngl': isngl,
             'Osngl': True}
 
 
