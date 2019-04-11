@@ -21,10 +21,6 @@ import numpy as np
 # This Library
 import topobuilder.core as TBcore
 import topobuilder.utils as TButil
-try:
-    from .core import core
-except ImportError:
-    from core import core
 
 
 __all__ = ['get_steps', 'process_master_geometries']
@@ -97,9 +93,9 @@ def process_master_geometries( masterdf: pd.DataFrame,
     """
     # Define PDB database.
     with SBIcr.on_option_value('structure', 'format', 'pdb'):
-        pdbdb = SBIdb.PDBLink(core.get_option('master', 'pdb'))
+        pdbdb = SBIdb.PDBLink(TBcore.get_option('master', 'pdb'))
         if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Set PDB database as: {}\n'.format(core.get_option('master', 'pdb')))
+            sys.stdout.write('Set PDB database as: {}\n'.format(TBcore.get_option('master', 'pdb')))
 
     # Prepare data: Sort by structure-chain to avoid multi-reading
     newdf = masterdf.sort_values(['pdb', 'chain'])

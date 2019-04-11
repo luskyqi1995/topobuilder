@@ -46,7 +46,7 @@ def apply( cases: List[Case],
 
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('corrections', [])
-        cases[i] = case_apply(case)
+        cases[i] = case_apply(case, rmsd, bin)
         cases[i] = cases[i].set_protocol_done(prtid)
     return cases
 
@@ -55,11 +55,11 @@ def case_apply( case: Case,
                 rmsd: Optional[float] = 5.0,
                 bin: Optional[str] = 'mid',
                 step: Optional[int] = None,
-                corrections: Optional[Dict] = None ) -> Case:
+                corrections: Optional[Dict] = dict() ) -> Case:
     """
     """
     kase = Case(case)
-    corrections = corrections if TBcore.get_option('system', 'jupyter') else None
+    corrections = corrections if TBcore.get_option('system', 'jupyter') else {}
     kase.data.setdefault('metadata', {}).setdefault('imaster', {})
     kase.data.setdefault('metadata', {}).setdefault('corrections', [])
 
@@ -79,7 +79,6 @@ def case_apply( case: Case,
     steps = [steps[step], ] if step is not None and TBcore.get_option('system', 'jupyter') else steps
 
     # Work by layers
-    CKase = Case(kase)
     done_l = set()
     for i, step in enumerate(steps):
         # Step working directory
@@ -90,15 +89,15 @@ def case_apply( case: Case,
 
         reload = TButil.checkpoint_in(checkpoint)
         if reload is not None:
-            CKase = CKase.apply_corrections(corrections)
             case.data['metadata']['imaster'].setdefault('step{:02d}'.format(i + 1), reload)
             case.data['metadata']['corrections'].append(reload['corrections'])
-            corrections = reload['corrections']
+            corrections.update(reload['corrections'])
             done_l.update(reload['layers'])
+            # CKase = CKase.apply_corrections(corrections)
             continue
 
         # Apply corrections from previous steps and rebuild
-        CKase = CKase.apply_corrections(corrections)
+        CKase = Case(kase).apply_corrections(corrections)
         with TBcore.on_option_value('system', 'overwrite', True):
             CKase = plugin_source.load_plugin('builder').case_apply(CKase, connectivity=True)
 
@@ -121,7 +120,7 @@ def case_apply( case: Case,
         TButil.checkpoint_out(checkpoint, data)
         kase.data['metadata']['corrections'].append(data['corrections'])
         done_l.update(data['layers'])
-        corrections = data['corrections']
+        corrections.update(data['corrections'])
 
     return kase
 
@@ -198,7 +197,7 @@ def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str
         data.setdefault(sse, {}).setdefault('tilt', {'x': ddf[ddf['measure'] == 'angles_layer'][bin].values[0],
                                                      'z': ddf[ddf['measure'] == 'angles_side'][bin].values[0]})
         pc = ddf[ddf['measure'] == 'points_layer'][bin].values[0] - case['configuration.defaults.distance.ab']
-        data.setdefault(sse, {}).setdefault('coordinates', {'x': pc})
+        data.setdefault(sse, {}).setdefault('coordinates', {'z': pc})
         return data
 
 

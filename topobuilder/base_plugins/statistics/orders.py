@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 from typing import List, Dict
-from subprocess import run
+from subprocess import run, DEVNULL
 
 # External Libraries
 import pandas as pd
@@ -46,6 +46,9 @@ def metadata( order: str ) -> Dict:
 def sketch_2_master( case: Case, **kwargs ):
     """
     """
+    # params
+    rmsd = kwargs.get('rmsd', 5)
+
     # Get working paths
     wpath = utils.make_folder_structure(case, 'sketch_2_master')
 
@@ -56,7 +59,7 @@ def sketch_2_master( case: Case, **kwargs ):
     createpds = TButil.createPDS(pdbfile)
     TButil.plugin_bash(createpds)
     run(createpds, stdout=DEVNULL)
-    masters = TButil.master_best_each(query.with_suffix('.pds'), stepfolder.joinpath('_master'), rmsd)
+    masters = TButil.master_best_each(pdbfile.with_suffix('.pds'), wpath['main'].joinpath('_master'), rmsd)
     data = submit_searches(masters, stepfolder, current_case_file, '.'.join([x['id'] for x in sses]))
 
 

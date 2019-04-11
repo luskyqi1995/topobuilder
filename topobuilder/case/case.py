@@ -19,6 +19,7 @@ from typing import Optional, Tuple, Dict, List, Union, TypeVar
 from collections import OrderedDict
 from itertools import chain, zip_longest
 from string import ascii_uppercase
+import multiprocessing as mp
 
 # External Libraries
 import numpy as np
@@ -47,7 +48,7 @@ class Case( object ):
         if isinstance(init, str):
             self.data = OrderedDict({'configuration': {'name': init}})
         elif isinstance(init, Case):
-            self.data = init.check().data
+            self.data = OrderedDict(deepcopy(init.check().data))
         elif isinstance(init, (dict, OrderedDict)):
             self.data = OrderedDict(deepcopy(init))
             self.data = self.schema.load(self.data)
@@ -223,7 +224,7 @@ class Case( object ):
 
     @property
     def connectivities_paths( self ) -> Tuple[Path]:
-        """Returns a list with the expected :class:`Path` for each.
+        """Returns a list with the expected :class:`Path` for each connectivity.
 
         :return: :class:`tuple` of :class:`Path`
         """
@@ -585,31 +586,34 @@ class Case( object ):
         """Generates a :class:`List` of :class:`.Case` in which the different available connectivities
         have been applied.
 
+        Will run async pool when more than 100 connectivities are provided.
+
         :return: :class:`List` of :class:`.Case`
 
         :raises:
             :CaseIncompleteError: If there is not enough data to apply topologies.
         """
-        results = []
-
         if 'connectivity' not in self or 'architecture' not in self:
             raise CaseIncompleteError('Unable to apply corrections to non-existing fields.')
 
-        for i, cn in enumerate(self['topology.connectivity']):
-            corrections = {}
-            c = Case(self.data)
-            if c.is_reoriented:
-                if c.connectivity_count == 1:
-                    results.append(c)
-                    continue
-                else:
-                    raise CaseLogicError('The case has multiple connectivities but its labeled as oriented?')
-            c['topology']['connectivity'] = [self['topology.connectivity'][i]]
-            for turn in c['topology.connectivity'][0][1 if not c.flip_first else 0::2]:
-                corrections.setdefault(turn, {'tilt': {'x': 180}})
-            results.append(c.apply_corrections(corrections))
-            results[-1].data['configuration']['reoriented'] = True
-        return results
+        cn = self['topology.connectivity']
+
+        if len(cn) == 1:
+            return [make_topology(self, 0), ]
+
+        if len(cn) > 1:
+            if self.is_reoriented:
+                raise CaseLogicError('The case has multiple connectivities but its labeled as oriented?')
+            if len(cn) < 100:
+                return [make_topology(self, i) for i in range(len(cn))]
+            else:
+                result = []
+                pool = mp.Pool(3)
+                for i in range(len(cn)):
+                    result.append(pool.apply_async(make_topology, args=(self, i)))
+                pool.close()
+                pool.join()
+                return [r.get() for r in result]
 
     def apply_corrections( self, corrections: Optional[Union[Dict, str, Path]] = None ) -> C:
         """
@@ -630,6 +634,9 @@ class Case( object ):
             except json.JSONDecodeError:
                 crr = yaml.load(open(corrections))
             return Case(self.data).apply_corrections(crr)
+
+        if isinstance(corrections, dict) and not bool(corrections):
+            return Case(self.data).check()
 
         # APPLY CONFIGURATION CORRECTIONS (before cast absolute is applied in layer_corrections)
         c = Case(self)
@@ -774,6 +781,20 @@ class Case( object ):
                                  f=math.factorial(sum(sse[x] for x in sse)),
                                  s=self.connectivity_count)
         display(HTML(tplt))
+
+
+# Function is global so that it can be pickled -> apply_async
+def make_topology( case, count ):
+    """
+    """
+    c = Case(case.data)
+    corrections = {}
+    c['topology']['connectivity'] = [c['topology.connectivity'][count]]
+    for turn in c['topology.connectivity'][0][1 if not c.flip_first else 0::2]:
+        corrections.setdefault(turn, {'tilt': {'x': 180}})
+    c = c.apply_corrections(corrections)
+    c.data['configuration']['reoriented'] = True
+    return c
 
 
 def configuration_corrections( corrections: dict, case: Case) -> Dict:

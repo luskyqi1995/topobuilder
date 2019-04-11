@@ -10,6 +10,7 @@
 from typing import List, Dict
 import itertools
 import sys
+import random
 
 # External Libraries
 import networkx as nx
@@ -47,6 +48,7 @@ def metadata() -> Dict:
 def apply( cases: List[Case],
            prtid: int,
            representatives: bool = False,
+           sampling: float = 1,
            **kwargs ) -> List[Case]:
     """Generate all possible connectivities in the Case.
     """
@@ -54,7 +56,7 @@ def apply( cases: List[Case],
 
     new_cases = []
     for i, case in enumerate(cases):
-        new_cases.extend(case_apply(case, representatives))
+        new_cases.extend(case_apply(case, representatives, sampling))
 
     for i, case in enumerate(new_cases):
         new_cases[i] = case.set_protocol_done(prtid)
@@ -63,7 +65,7 @@ def apply( cases: List[Case],
     return new_cases
 
 
-def case_apply( case: Case, representatives: bool = False ) -> List[Case]:
+def case_apply( case: Case, representatives: bool = False, sampling: float = 1 ) -> List[Case]:
     """Generate all possible connectivities in the Case.
     """
     case = Case(case)
@@ -71,13 +73,13 @@ def case_apply( case: Case, representatives: bool = False ) -> List[Case]:
     new_cases = []
     # If connectivities are pre-specified, only make those.
     if case.connectivity_count > 0:
-        new_cases.extend(eval_representatives(case.apply_topologies(), representatives))
+        new_cases.extend(eval_representatives(case.apply_topologies(), representatives, sampling))
     else:
-        new_cases.extend(eval_representatives(explore_connectivities(case), representatives))
+        new_cases.extend(eval_representatives(explore_connectivities(case), representatives, sampling))
     return new_cases
 
 
-def explore_connectivities( case: Case ) -> List[Case]:
+def explore_connectivities( case: Case ) -> Case:
     """
     """
     case = Case(case)
@@ -96,29 +98,49 @@ def explore_connectivities( case: Case ) -> List[Case]:
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Explored a total of {} unique connectivities\n'.format(len(topologies)))
 
-    return case.add_secured_topologies(topologies).apply_topologies()
+    return case.add_secured_topologies(topologies)
 
 
-def eval_representatives( cases: List[Case], representatives: bool ) -> List[Case]:
+def eval_representatives( case: Case, representatives: bool, sampling: float = 1 ) -> List[Case]:
     """
     """
     # Calculate representatives
+    sse = list(itertools.chain.from_iterable([[sse['id'] for sse in layer] for layer in case['topology.architecture']]))
+    cyc = itertools.cycle([0, 1])
+
     reps = {}
-    for c in cases:
-        reps.setdefault(c.directionality_profile, []).append(c.connectivities_str[0])
-    reps = [list(sorted(set(x))) for x in reps.values()]
+    sper = {}
+    prim = []
+    for cn in case.connectivities_str:
+        dpf = []
+        for x in cn.split('.'):
+            dpf.append((x, str(next(cyc))))
+        dpf = dict(dpf)
+        pfl = ''.join(map(dict(dpf).get, sse))
+        reps.setdefault(pfl, []).append(cn)
+        if len(reps[pfl]) == 1:
+            prim.append(cn.split('.'))
+        sper[cn] = pfl
+
+    picks = prim if representatives else case['topology.connectivity']
+
+    if sampling < 1:
+        picks = random.sample(picks, math.ceil(len(picks) * sampling))
+
+    cases = case.add_secured_topologies(picks).apply_topologies()
+
+    if representatives:
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.write('Selecting {} representatives\n'.format(len(cases)))
+            sys.stdout.flush()
 
     for c in cases:
         c.data.setdefault('metadata', {}).setdefault('equivalent_connectivities', {})
         cn = c.connectivities_str[0]
-        gr = [group for group in reps if cn in group][0]
+        gr = reps[sper[cn]]
         c.data['metadata']['equivalent_connectivities']['others'] = gr
         c.data['metadata']['equivalent_connectivities']['representative'] = (gr[0] == cn)
 
-    if representatives:
-        cases = [c for c in cases if c['metadata.equivalent_connectivities.representative']]
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Selecting {} representatives\n'.format(len(cases)))
     return cases
 
 

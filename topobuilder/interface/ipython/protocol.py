@@ -89,7 +89,7 @@ class InteractiveProtocol( object ):
                 <tr style="border-bottom: 1pt solid black;">
                     <th style="text-align:center;" colspan="{{cols - 1}}"><b>PROTOCOLS</b></th>
                     <th style="text-align:center;"><b>EXECUTED</b></th>
-                    <th style="text-align:center;"><b>COUNT</b></th>
+                    <th style="text-align:center;"><b>CASES</b></th>
                 <tr>
                 {% for item in protocols %}
                 <tr>
