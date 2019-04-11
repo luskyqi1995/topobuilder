@@ -46,7 +46,7 @@ def metadata( order: str ) -> Dict:
 def sketch_2_master( case: Case, **kwargs ):
     """
     """
-    # params
+    # params
     rmsd = kwargs.get('rmsd', 5)
 
     # Get working paths

@@ -599,6 +599,8 @@ class Case( object ):
         cn = self['topology.connectivity']
 
         if len(cn) == 1:
+            if self.is_reoriented:
+                return [self, ]
             return [make_topology(self, 0), ]
 
         if len(cn) > 1:
@@ -786,6 +788,7 @@ class Case( object ):
 def make_topology( case, count ):
     """
     """
+
     c = Case(case.data)
     corrections = {}
     c['topology']['connectivity'] = [c['topology.connectivity'][count]]
