@@ -59,7 +59,7 @@ def case_apply( case: Case,
     #     raise ImportError(textwrap.dedent("""\
     #         The requested combination of source: {} and analysis {} cannot be found.
     #         """).format(source, analysis))
-    # 
+    #
     # return getattr(orders, '{}_2_{}'.format(source, analysis), not_found)(case, **kwargs)
 
     # Generate the folder tree for a single connectivity.
