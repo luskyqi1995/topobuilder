@@ -319,7 +319,8 @@ def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ) -> in
     """
     """
     try:
-        num_lines = sum(1 for line in open(masfile) if line.rstrip())
+        with open(masfile) as fd:
+            num_lines = sum(1 for line in fd if line.rstrip())
         with open(masfile) as fd:
             head = [next(fd) for x in range(top_loops * multiplier)]
         with open(masfile, 'w') as fd:
