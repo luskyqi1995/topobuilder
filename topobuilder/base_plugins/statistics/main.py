@@ -53,14 +53,14 @@ def case_apply( case: Case,
     """
     case = Case(case)
 
-    def not_found(*args, **kwargs):
-        nonlocal source
-        nonlocal analysis
-        raise ImportError(textwrap.dedent("""\
-            The requested combination of source: {} and analysis {} cannot be found.
-            """).format(source, analysis))
-
-    return getattr(orders, '{}_2_{}'.format(source, analysis), not_found)(case, **kwargs)
+    # def not_found(*args, **kwargs):
+    #     nonlocal source
+    #     nonlocal analysis
+    #     raise ImportError(textwrap.dedent("""\
+    #         The requested combination of source: {} and analysis {} cannot be found.
+    #         """).format(source, analysis))
+    # 
+    # return getattr(orders, '{}_2_{}'.format(source, analysis), not_found)(case, **kwargs)
 
     # Generate the folder tree for a single connectivity.
     wfolder = case.connectivities_paths[0].joinpath('statistic')

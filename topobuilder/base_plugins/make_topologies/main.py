@@ -11,6 +11,7 @@ from typing import List, Dict
 import itertools
 import sys
 import random
+import math
 
 # External Libraries
 import networkx as nx
@@ -73,7 +74,7 @@ def case_apply( case: Case, representatives: bool = False, sampling: float = 1 )
     new_cases = []
     # If connectivities are pre-specified, only make those.
     if case.connectivity_count > 0:
-        new_cases.extend(eval_representatives(case.apply_topologies(), representatives, sampling))
+        new_cases.extend(eval_representatives(case, representatives, sampling))
     else:
         new_cases.extend(eval_representatives(explore_connectivities(case), representatives, sampling))
     return new_cases
