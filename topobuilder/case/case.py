@@ -720,7 +720,6 @@ class Case( object ):
 
         raise NotImplementedError()
 
-
     def __iter__( self ):
         architecture = self['topology.architecture']
         for i, layer in enumerate(architecture):

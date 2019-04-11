@@ -152,7 +152,7 @@ def case_apply( case: Case,
             execute_master_fixedgap(outfile, pds_list, mdis, Mdis, rmsd_cut)
 
             # 6. Minimize master data (pick top_loopsx3 lines to read and minimize the files)
-            minimize_master_file(masfile, top_loops, 3)
+            match_count = minimize_master_file(masfile, top_loops, 3)
 
         # 7. Retrieve master data
         dfloop = process_master_data(masfile, sse1_name, sse2_name, abego, fragfiles, top_loops, is_hairpin and harpins_2)
@@ -166,6 +166,7 @@ def case_apply( case: Case,
 
         # 8. Make Fragments
         loop_data = make_fragment_files(dfloop, edges, masfile)
+        loop_data['match_count'] += match_count
         case.data['metadata']['loop_fragments'].append(loop_data)
         case.data['metadata']['loop_lengths'].append(int(loopl))
 
@@ -181,7 +182,7 @@ def make_fragment_files( dfloop: pd.DataFrame, edges: Dict, masfile: Path ) -> D
     """
     """
     data = {'loop_length': int(dfloop.iloc[0]['loop_length']), 'abego': list(dfloop['loop'].values),
-            'edges': edges, 'fragfiles': []}
+            'edges': edges, 'fragfiles': [], 'match_count': 0}
 
     dfs3 = []
     dfs9 = []
@@ -314,16 +315,18 @@ def execute_master_fixedgap(outfile: Path, pds_list: Path, mdis: int, Mdis: int,
         run(mastercmd, stdout=devnull)
 
 
-def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ):
+def minimize_master_file( masfile: Path, top_loops: int, multiplier: int ) -> int:
     """
     """
     try:
+        num_lines = sum(1 for line in open(masfile) if line.rstrip())
         with open(masfile) as fd:
             head = [next(fd) for x in range(top_loops * multiplier)]
         with open(masfile, 'w') as fd:
             fd.write(''.join(head))
     except StopIteration:
         pass
+    return num_lines
 
 
 def check_hairpin( name1: str, name2: str) -> bool:
