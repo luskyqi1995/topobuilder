@@ -348,6 +348,16 @@ class Case( object ):
         return ';'.join(ss_pair), ';'.join(hh_pair), ';'.join(hss_triplets)
 
     @property
+    def potential_connectivities( self ):
+        return math.factorial(sum(1 for x in self.architecture_str.split('.')))
+
+    @property
+    def potential_sse_orientations( self ):
+        from scipy.special import binom
+        i = len(self.architecture_str.split('.'))
+        return int(binom(i, math.floor(i / 2)) * (1 + i % 2))
+
+    @property
     def is_empty( self ) -> bool:
         return len(self.shape) == 0
 
@@ -571,6 +581,7 @@ class Case( object ):
             back = None if i == 0 else c['topology.architecture'][i - 1][0]['type']
             here = layer[0]['type']
             zlayer += dschema.get_z_distance(defaults['distance'], back, here)
+            zpoints = []
             for j, sse in enumerate(layer):
                 left = None if j == 0 else layer[j - 1]['type']
                 here = sse['type']
@@ -580,6 +591,9 @@ class Case( object ):
                 position['z'] = zlayer  # Reset Z coordinate
                 c.data['topology']['architecture'][i][j] = sschema.cast_absolute(sse, position, defaults)
                 position = sschema.get_position(c['topology.architecture'][i][j])
+                zpoints.append(position['z'])
+            # zlayer should be defined as the previous' layer mean z position.
+            zlayer = np.mean(zpoints)
         return c.check()
 
     def apply_topologies( self ) -> List[C]:
