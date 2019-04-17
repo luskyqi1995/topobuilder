@@ -580,8 +580,7 @@ class Case( object ):
             position['x'] = 0
             back = None if i == 0 else c['topology.architecture'][i - 1][0]['type']
             here = layer[0]['type']
-            zlayer += dschema.get_z_distance(defaults['distance'], back, here)
-            zpoints = []
+            zlayer = dschema.get_z_distance(defaults['distance'], back, here) * i
             for j, sse in enumerate(layer):
                 left = None if j == 0 else layer[j - 1]['type']
                 here = sse['type']
@@ -591,9 +590,7 @@ class Case( object ):
                 position['z'] = zlayer  # Reset Z coordinate
                 c.data['topology']['architecture'][i][j] = sschema.cast_absolute(sse, position, defaults)
                 position = sschema.get_position(c['topology.architecture'][i][j])
-                zpoints.append(position['z'])
-            # zlayer should be defined as the previous' layer mean z position.
-            zlayer = np.mean(zpoints)
+
         return c.check()
 
     def apply_topologies( self ) -> List[C]:
