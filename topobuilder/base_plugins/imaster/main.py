@@ -196,10 +196,10 @@ def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str
         ddf = stats[(stats['sse'] == sse)]
         data.setdefault(sse, {}).setdefault('tilt', {'x': ddf[ddf['measure'] == 'angles_layer'][bin].values[0],
                                                      'z': ddf[ddf['measure'] == 'angles_side'][bin].values[0]})
+        pc = ddf[ddf['measure'] == 'points_layer'][bin].values[0] - case['configuration.defaults.distance.ab']
         if ascii_uppercase.index(qlayer) < ascii_uppercase.index(rlayer):
-            pc = ddf[ddf['measure'] == 'points_layer'][bin].values[0] + case['configuration.defaults.distance.ab']
-        else:
-            pc = ddf[ddf['measure'] == 'points_layer'][bin].values[0] - case['configuration.defaults.distance.ab']
+            pc = pc * -1
+
         data.setdefault(sse, {}).setdefault('coordinates', {'z': pc})
         return data
 
