@@ -88,8 +88,8 @@ def make_scripts( case: Case,
     else:
         with open(design_script, 'r') as f:
             lines = f.readlines()
-        dsg = = ''.join(lines)
-        
+        dsg = ''.join(lines)
+
     print(fld, dsg, type(fld))
     if TBcore.get_option('system', 'jupyter'):
         ifold = os.getenv('TB_FUNFOLDES_FOLD_FILE', None)
