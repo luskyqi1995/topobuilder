@@ -86,6 +86,7 @@ def make_scripts( case: Case,
     else:
         dsg = design_script
 
+    print(fld, dsg)
     if TBcore.get_option('system', 'jupyter'):
         ifold = os.getenv('TB_FUNFOLDES_FOLD_FILE', None)
         idsgn = os.getenv('TB_FUNFOLDES_DSGN_FILE', None)
