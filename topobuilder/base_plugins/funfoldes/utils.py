@@ -71,8 +71,8 @@ def make_scripts( case: Case,
                   data: Dict,
                   natbias: float = 2.5,
                   layer_design: bool = True,
-                  folding_script: Optional[str] = '',
-                  design_script: Optional[str] = '',
+                  folding_script: str = '',
+                  design_script: str = '',
                   ) -> Tuple[str, str]:
     """Create the folding and design scripts.
     """
