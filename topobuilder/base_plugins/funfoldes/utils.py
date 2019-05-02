@@ -76,7 +76,7 @@ def make_scripts( case: Case,
                   ) -> Tuple[str, str]:
     """Create the folding and design scripts.
     """
-    if folding_script == str(''):
+    if folding_script == '':
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('Reading internal folding xml script\n')
         fld = TButil.rosettascript(TButil.funfoldes(case))
@@ -87,7 +87,7 @@ def make_scripts( case: Case,
             lines = f.readlines()
         fld = ''.join(lines)
 
-    if design_script == str(''):
+    if design_script == '':
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('Reading internal design xml script\n')
         dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
