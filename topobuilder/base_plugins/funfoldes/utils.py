@@ -88,16 +88,16 @@ def make_scripts( case: Case,
     #    fld = ''.join(lines)
 
     print(fld)
-    if design_script != '':
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Reading external design xml script\n')
-        with open(design_script, 'r') as f:
-            lines = f.readlines()
-        dsg = ''.join(lines)
-    else:
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Reading internal design xml script\n')
-        dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
+    #if design_script != '':
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('Reading external design xml script\n')
+    with open(design_script, 'r') as f:
+        lines = f.readlines()
+    dsg = ''.join(lines)
+    #else:
+    #    if TBcore.get_option('system', 'verbose'):
+    #        sys.stdout.write('Reading internal design xml script\n')
+    #    dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
     print(dsg)
 
     if TBcore.get_option('system', 'jupyter'):
