@@ -71,21 +71,21 @@ def make_scripts( case: Case,
                   data: Dict,
                   natbias: float = 2.5,
                   layer_design: bool = True,
-                  folding_script: str = '',
+                  #folding_script: str = '',
                   design_script: str = '',
                   ) -> Tuple[str, str]:
     """Create the folding and design scripts.
     """
-    if folding_script == '':
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Reading internal folding xml script\n')
-        fld = TButil.rosettascript(TButil.funfoldes(case))
-    else:
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Reading external folding xml script\n')
-        with open(folding_script, 'r') as f:
-            lines = f.readlines()
-        fld = ''.join(lines)
+    #if folding_script == '':
+    if TBcore.get_option('system', 'verbose'):
+        sys.stdout.write('Reading internal folding xml script\n')
+    fld = TButil.rosettascript(TButil.funfoldes(case))
+    #else:
+    #    if TBcore.get_option('system', 'verbose'):
+    #        sys.stdout.write('Reading external folding xml script\n')
+    #    with open(folding_script, 'r') as f:
+    #        lines = f.readlines()
+    #    fld = ''.join(lines)
 
     print(fld)
     if design_script == '':
@@ -98,7 +98,8 @@ def make_scripts( case: Case,
         with open(design_script, 'r') as f:
             lines = f.readlines()
         dsg = ''.join(lines)
-
+    print(dsg)
+    
     if TBcore.get_option('system', 'jupyter'):
         ifold = os.getenv('TB_FUNFOLDES_FOLD_FILE', None)
         idsgn = os.getenv('TB_FUNFOLDES_DSGN_FILE', None)

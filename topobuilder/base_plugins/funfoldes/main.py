@@ -52,7 +52,7 @@ def apply( cases: List[Case],
            design_nstruct: Optional[int] = 10,
            natbias: Optional[float] = 2.5,
            layer_design: Optional[bool] = True,
-           folding_script: Optional[str] = '',
+           #folding_script: Optional[str] = '',
            design_script: Optional[str] = '',
            **kwargs ) -> List[Case]:
     """Execute the FunFolDes Rosetta protocol.
@@ -63,7 +63,7 @@ def apply( cases: List[Case],
     # Execute for each case
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('funfoldes', '')
-        cases[i] = case_apply(case, folding_nstruct, design_nstruct, natbias, folding_script, design_script)
+        cases[i] = case_apply(case, folding_nstruct, design_nstruct, natbias, design_script)
         cases[i] = cases[i].set_protocol_done(prtid)
 
     return cases
@@ -75,7 +75,7 @@ def case_apply( case: Case,
                 design_nstruct: Optional[int] = 10,
                 natbias: Optional[float] = 2.5,
                 layer_design: Optional[bool] = True,
-                folding_script: Optional[str] = '',
+                #folding_script: Optional[str] = '',
                 design_script: Optional[str] = '',
                 ) -> Case:
     """Execute the FunFolDes Rosetta protocol.
@@ -107,7 +107,7 @@ def case_apply( case: Case,
     utils.build_template_sketch( case, wpaths['pdb'] )
 
     # Make the Folding and Design RScripts
-    data = utils.make_scripts(case, wpaths, data, natbias, layer_design, folding_script, design_script)
+    data = utils.make_scripts(case, wpaths, data, natbias, layer_design, design_script)
 
     # Finish command
     data = utils.commands(case, folding_nstruct, design_nstruct, data, wpaths)
