@@ -80,7 +80,7 @@ def make_scripts( case: Case,
         fld = TButil.rosettascript(TButil.funfoldes(case))
     else:
         if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Reading external design xml script')
+            sys.stdout.write('Reading external folding xml script\n')
         with open(folding_script, 'r') as f:
             lines = f.readlines()
         fld = ''.join(lines)
@@ -89,7 +89,7 @@ def make_scripts( case: Case,
         dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
     else:
         if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Reading external folding xml script')
+            sys.stdout.write('Reading external design xml script\n')
         with open(design_script, 'r') as f:
             lines = f.readlines()
         dsg = ''.join(lines)
