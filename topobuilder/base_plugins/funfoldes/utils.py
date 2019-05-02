@@ -79,13 +79,17 @@ def make_scripts( case: Case,
     if folding_script == '':
         fld = TButil.rosettascript(TButil.funfoldes(case))
     else:
-        fld = folding_script
+        with open(folding_script, 'r') as f:
+            lines = f.readlines()
+        fld = ''.join(lines)
 
     if design_script == '':
         dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
     else:
-        dsg = design_script
-
+        with open(design_script, 'r') as f:
+            lines = f.readlines()
+        dsg = = ''.join(lines)
+        
     print(fld, dsg, type(fld))
     if TBcore.get_option('system', 'jupyter'):
         ifold = os.getenv('TB_FUNFOLDES_FOLD_FILE', None)
