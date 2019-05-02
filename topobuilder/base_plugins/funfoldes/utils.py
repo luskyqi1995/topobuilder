@@ -87,6 +87,7 @@ def make_scripts( case: Case,
             lines = f.readlines()
         fld = ''.join(lines)
 
+    print(fld)
     if design_script == '':
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('Reading internal design xml script\n')
