@@ -70,12 +70,21 @@ def make_scripts( case: Case,
                   wpaths: Dict,
                   data: Dict,
                   natbias: float = 2.5,
-                  layer_design: bool = True
+                  layer_design: bool = True,
+                  folding_script: Optional[str] = '',
+                  design_script: Optional[str] = '',
                   ) -> Tuple[str, str]:
     """Create the folding and design scripts.
     """
-    fld = TButil.rosettascript(TButil.funfoldes(case))
-    dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
+    if folding_script == '':
+        fld = TButil.rosettascript(TButil.funfoldes(case))
+    else:
+        fld = folding_script
+
+    if design_script == '':
+        dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
+    else:
+        dsg = design_script
 
     if TBcore.get_option('system', 'jupyter'):
         ifold = os.getenv('TB_FUNFOLDES_FOLD_FILE', None)
@@ -111,11 +120,11 @@ def make_scripts( case: Case,
             TButil.exit()
 
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Writing the folding RosettaScript file: {}\n'.format(wpaths['foldRS']))
+        sys.stdout.write('Writing/linking the folding RosettaScript file: {}\n'.format(wpaths['foldRS']))
     with wpaths['foldRS'].open('w') as fd:
         fd.write(fld)
     if TBcore.get_option('system', 'verbose'):
-        sys.stdout.write('Writing the design RosettaScript file: {}\n'.format(wpaths['designRS']))
+        sys.stdout.write('Writing/linking the design RosettaScript file: {}\n'.format(wpaths['designRS']))
     with wpaths['designRS'].open('w') as fd:
         fd.write(dsg)
 
