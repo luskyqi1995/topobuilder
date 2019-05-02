@@ -48,7 +48,8 @@ def metadata() -> Dict:
 
 def apply( cases: List[Case],
            prtid: int,
-           nstruct: Optional[int] = 2000,
+           folding_nstruct: Optional[int] = 2000,
+           design_nstruct: Optional[int] = 10,
            natbias: Optional[float] = 2.5,
            layer_design: Optional[bool] = True,
            folding_script: Optional[str] = '',
@@ -70,7 +71,8 @@ def apply( cases: List[Case],
 
 @TButil.plugin_conditions(metadata())
 def case_apply( case: Case,
-                nstruct: Optional[int] = 2000,
+                folding_nstruct: Optional[int] = 2000,
+                design_nstruct: Optional[int] = 10,
                 natbias: Optional[float] = 2.5,
                 layer_design: Optional[bool] = True,
                 folding_script: Optional[str] = '',
@@ -108,7 +110,7 @@ def case_apply( case: Case,
     data = utils.make_scripts(case, wpaths, data, natbias, layer_design, folding_script, design_script)
 
     # Finish command
-    data = utils.commands(case, nstruct, data, wpaths)
+    data = utils.commands(case, folding_nstruct, design_nstruct, data, wpaths)
 
     # Execute
     data = utils.execute(data, wpaths)

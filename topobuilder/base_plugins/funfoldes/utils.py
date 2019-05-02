@@ -79,6 +79,8 @@ def make_scripts( case: Case,
     if folding_script == '':
         fld = TButil.rosettascript(TButil.funfoldes(case))
     else:
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.write('Reading external design xml script')
         with open(folding_script, 'r') as f:
             lines = f.readlines()
         fld = ''.join(lines)
@@ -86,11 +88,12 @@ def make_scripts( case: Case,
     if design_script == '':
         dsg = TButil.rosettascript(TButil.constraint_design(case, natbias, layer_design))
     else:
+        if TBcore.get_option('system', 'verbose'):
+            sys.stdout.write('Reading external folding xml script')
         with open(design_script, 'r') as f:
             lines = f.readlines()
         dsg = ''.join(lines)
 
-    print(fld, dsg, type(fld))
     if TBcore.get_option('system', 'jupyter'):
         ifold = os.getenv('TB_FUNFOLDES_FOLD_FILE', None)
         idsgn = os.getenv('TB_FUNFOLDES_DSGN_FILE', None)
@@ -140,11 +143,12 @@ def make_scripts( case: Case,
     return data
 
 
-def commands( case: Case, nstruct: int, data: Dict, wpaths: Dict ) -> Dict:
+def commands( case: Case, folding_nstruct: int, design_nstruct: int, data: Dict, wpaths: Dict ) -> Dict:
     """Create the full commands to execute Rosetta.
     """
     out_prefix = (case.name if not TBcore.get_option('slurm', 'use') else '_'.join([case.name, '${SLURM_ARRAY_TASK_ID}'])) + '_'
-    nstruct = nstruct if not TBcore.get_option('slurm', 'use') else math.ceil(nstruct / TBcore.get_option('slurm', 'array'))
+    folding_nstruct = folding_nstruct if not TBcore.get_option('slurm', 'use') else math.ceil(folding_nstruct / TBcore.get_option('slurm', 'array'))
+    design_nstruct = design_nstruct if not None else 10
 
     commons = ['-overwrite', '-in:ignore_unrecognized_res', '-in:ignore_waters', '-out:file:silent_struct_type',
                'binary', '-out:mute', 'protocols.abinitio', 'protocols.moves', 'core.optimization']
@@ -155,8 +159,8 @@ def commands( case: Case, nstruct: int, data: Dict, wpaths: Dict ) -> Dict:
     prefix2 = out_prefix + 'des_'
     data['cmd']['folding'].extend(['-in:file:s', str(wpaths['pdb']), '-out:prefix', prefix1, '-out:file:silent', flded])
     data['cmd']['design'].extend(['-in:file:silent', flded, '-out:prefix', prefix2, '-out:file:silent', dsgnd])
-    data['cmd']['folding'].extend(['-nstruct', str(nstruct)])
-    data['cmd']['design'].extend(['-nstruct', str(10)])
+    data['cmd']['folding'].extend(['-nstruct', str(folding_nstruct)])
+    data['cmd']['design'].extend(['-nstruct', str(design_nstruct)])
     data['cmd']['folding'].extend(commons)
     data['cmd']['design'].extend(commons)
     return data
