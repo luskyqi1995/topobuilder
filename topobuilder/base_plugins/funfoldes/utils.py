@@ -130,11 +130,11 @@ def make_scripts( case: Case,
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Writing/linking the folding RosettaScript file: {}\n'.format(wpaths['foldRS']))
     with wpaths['foldRS'].open('w') as fd:
-        fd.write(dsg)
+        fd.write(fld)
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Writing/linking the design RosettaScript file: {}\n'.format(wpaths['designRS']))
     with wpaths['designRS'].open('w') as fd:
-        fd.write(fld)
+        fd.write(dsg)
 
     data['script']['folding'] = wpaths['foldRS']
     data['script']['design'] = wpaths['designRS']
