@@ -68,11 +68,11 @@ def build_template_sketch( case: Case, pdb_file: Union[Path, str] ):
 
 def make_scripts( case: Case,
                   wpaths: Dict,
+                  design_script,
                   data: Dict,
                   natbias: float = 2.5,
                   layer_design: bool = True,
                   #folding_script: str = '',
-                  design_script,
                   ) -> Tuple[str, str]:
     """Create the folding and design scripts.
     """
