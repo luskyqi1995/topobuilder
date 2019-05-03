@@ -107,7 +107,7 @@ def case_apply( case: Case,
     utils.build_template_sketch( case, wpaths['pdb'] )
 
     # Make the Folding and Design RScripts
-    data = utils.make_scripts(case, wpaths, data, natbias, layer_design, design_script)
+    data = utils.make_scripts(case, wpaths, design_script, data, natbias, layer_design)
 
     # Finish command
     data = utils.commands(case, folding_nstruct, design_nstruct, data, wpaths)
