@@ -53,7 +53,7 @@ def apply( cases: List[Case],
            natbias: Optional[float] = 2.5,
            layer_design: Optional[bool] = True,
            #folding_script: Optional[str] = '',
-           design_script: Optional[str] = '',
+           design_script = '',
            **kwargs ) -> List[Case]:
     """Execute the FunFolDes Rosetta protocol.
     """
@@ -76,7 +76,7 @@ def case_apply( case: Case,
                 natbias: Optional[float] = 2.5,
                 layer_design: Optional[bool] = True,
                 #folding_script: Optional[str] = '',
-                design_script: Optional[str] = '',
+                design_script = '',
                 ) -> Case:
     """Execute the FunFolDes Rosetta protocol.
     """
