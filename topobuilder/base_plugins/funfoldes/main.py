@@ -63,7 +63,7 @@ def apply( cases: List[Case],
     # Execute for each case
     for i, case in enumerate(cases):
         cases[i].data.setdefault('metadata', {}).setdefault('funfoldes', '')
-        cases[i] = case_apply(case, folding_nstruct, design_nstruct, natbias, design_script)
+        cases[i] = case_apply(case, design_script, folding_nstruct, design_nstruct, natbias)
         cases[i] = cases[i].set_protocol_done(prtid)
 
     return cases
