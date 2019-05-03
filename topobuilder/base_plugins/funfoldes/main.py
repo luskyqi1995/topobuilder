@@ -71,12 +71,12 @@ def apply( cases: List[Case],
 
 @TButil.plugin_conditions(metadata())
 def case_apply( case: Case,
+                design_script,
                 folding_nstruct: Optional[int] = 2000,
                 design_nstruct: Optional[int] = 10,
                 natbias: Optional[float] = 2.5,
                 layer_design: Optional[bool] = True,
                 #folding_script: Optional[str] = '',
-                design_script = None,
                 ) -> Case:
     """Execute the FunFolDes Rosetta protocol.
     """
