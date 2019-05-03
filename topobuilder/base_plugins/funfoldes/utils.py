@@ -92,7 +92,7 @@ def make_scripts( case: Case,
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Reading external design xml script\n')
     #with open('foldFromSketch_design.xml', 'r') as f:
-    with open(design_script, 'r') as f:
+    with open(''.format(design_script), 'r') as f:
         lines = f.readlines()
     dsg = ''.join(lines)
     #else:
