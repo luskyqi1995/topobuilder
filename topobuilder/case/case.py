@@ -1101,26 +1101,25 @@ def architecture_cast( architecture: Union[str, List, dict] ) -> Union[dict, str
         asciiU = string.ascii_uppercase
         result = {'architecture': []}
 
-        for arch in architecture.split(','):
-            for layer in arch.split('.'):
-                layer = layer.split(':')
-                m = re.match(expression, layer[0])
-                if not m:
-                    raise CaseError('Architecture format not recognized.')
-                result['architecture'].append([])
-                for i in range(int(m.group(1))):
-                    name = '{0}{1}{2}'.format(asciiU[len(result['architecture']) - 1],
-                                              i + 1, m.group(2))
-                    result['architecture'][-1].append({'type': m.group(2), 'id': name})
-                    if len(layer) > 1:
-                        try:
-                            result['architecture'][-1][-1].setdefault('length', int(layer[i + 1]))
-                        except IndexError:
-                            print('Lengths were not provided for all defined secondary structures.')
-                        except ValueError:
-                            print('Length values MUST BE integers.')
-                        except Exception as e:
-                            print(e)
+        for layer in architecture.split('.'):
+            layer = layer.split(':')
+            m = re.match(expression, layer[0])
+            if not m:
+                raise CaseError('Architecture format not recognized.')
+            result['architecture'].append([])
+            for i in range(int(m.group(1))):
+                name = '{0}{1}{2}'.format(asciiU[len(result['architecture']) - 1],
+                                          i + 1, m.group(2))
+                result['architecture'][-1].append({'type': m.group(2), 'id': name})
+                if len(layer) > 1:
+                    try:
+                        result['architecture'][-1][-1].setdefault('length', int(layer[i + 1]))
+                    except IndexError:
+                        print('Lengths were not provided for all defined secondary structures.')
+                    except ValueError:
+                        print('Length values MUST BE integers.')
+                    except Exception as e:
+                        print(e)
 
         schema = TopologySchema()
         return schema.dump(result)
@@ -1141,29 +1140,43 @@ def topology_cast( topology: Union[str, dict], count: Optional[int] = 0 ) -> Uni
     if isinstance(topology, str):
         expression = re.compile(r'^([A-Z])(\d+)([EH])(\d*)$')
         topology = topology.upper()
-        tp = {}
-        result = {'architecture': [], 'connectivity': [[]]}
-        for sse in topology.split('.'):
-            m = re.match(expression, sse)
-            if not m:
-                raise CaseError('Topology format not recognized.')
-            sse_id = '{0}{1}{2}'.format(m.group(1), m.group(2), m.group(3))
-            result['connectivity'][0].append(sse_id)
-            tp.setdefault(string.ascii_uppercase.find(m.group(1)) + 1,
-                          {}).setdefault(int(m.group(2)), (m.group(3), sse_id, m.group(4)))
+        result = {'architecture': [], 'connectivity': []}
+        architecture = []
+        for topo in topology.split(','):
+            tp = {}
+            result['connectivity'].append([])
+            architecture.append([])
+            for sse in topo.split('.'):
+                m = re.match(expression, sse)
+                if not m:
+                    raise CaseError('Topology format not recognized.')
+                sse_id = '{0}{1}{2}'.format(m.group(1), m.group(2), m.group(3))
+                result['connectivity'][-1].append(sse_id)
+                tp.setdefault(string.ascii_uppercase.find(m.group(1)) + 1,
+                              {}).setdefault(int(m.group(2)), (m.group(3), sse_id, m.group(4)))
 
-        if list(sorted(tp.keys())) != list(range(min(tp.keys()), max(tp.keys()) + 1)):
-            raise CaseError('Topology format skips layers.')
-        for k1 in sorted(tp.keys()):
-            result['architecture'].append([])
-            if list(sorted(tp[k1].keys())) != list(range(min(tp[k1].keys()), max(tp[k1].keys()) + 1)):
-                raise CaseError('Topology format skips positions in layer {}.'.format(k1))
-            for k2 in sorted(tp[k1].keys()):
-                scaffold = {'type': tp[k1][k2][0], 'id': tp[k1][k2][1]}
-                if tp[k1][k2][2] != '':
-                    scaffold.setdefault('length', tp[k1][k2][2])
-                result['architecture'][-1].append(scaffold)
-
+            if list(sorted(tp.keys())) != list(range(min(tp.keys()), max(tp.keys()) + 1)):
+                raise CaseError('Topology format skips layers.')
+            for k1 in sorted(tp.keys()):
+                architecture[-1].append([])
+                if list(sorted(tp[k1].keys())) != list(range(min(tp[k1].keys()), max(tp[k1].keys()) + 1)):
+                    raise CaseError('Topology format skips positions in layer {}.'.format(k1))
+                for k2 in sorted(tp[k1].keys()):
+                    scaffold = {'type': tp[k1][k2][0], 'id': tp[k1][k2][1]}
+                    if tp[k1][k2][2] != '':
+                        scaffold.setdefault('length', tp[k1][k2][2])
+                    architecture[-1][-1].append(scaffold)
+        arch_str = []
+        for a in architecture:
+            astr = []
+            for l in a:
+                [astr.append(ss['id']) for ss in l]
+            arch_str.append(''.join(astr))
+        arch_str = list(set(arch_str))
+        if len(arch_str) > 1:
+            raise CaseLogicError('A case can only contain one architecture.')
+        else:
+            result['architecture'] = list([list(x) for x in architecture[0]])
         schema = TopologySchema()
         return schema.dump(result)
 
