@@ -62,6 +62,7 @@ def case_apply( case: Case,
     corrections = corrections if TBcore.get_option('system', 'jupyter') else {}
     kase.data.setdefault('metadata', {}).setdefault('imaster', {})
     kase.data.setdefault('metadata', {}).setdefault('corrections', [])
+    kase.data.setdefault('metadata', {}).setdefault('bin', bin)
 
     # Interactive MASTER smoothing is only applied to a Case with one single connectivity and already reoriented
     if kase.connectivity_count > 1:
@@ -166,9 +167,21 @@ def calc_corrections( data: Dict, case: Case, qlayers: Set, dlayers: Set, bin: O
             if not found:
                 toreference = None
 
+    # Load Data, bin, show and addapt if no matches for the given bin.
+    bins = ["close", "mid", "far", "extreme"]
     df = pd.read_csv(data['stats'])
-    df = df.assign(bin=pd.cut(df['rmsd'], bins=[0, 2, 2.5, 3, 5], labels=["close", "mid", "far", "extreme"]))
-    TButil.plot_match_bin(df, Path(data['stats']).parent.joinpath('match_count'), len(TButil.pds_database()[1]), ['pdb', 'chain'])
+    df = df.assign(bin=pd.cut(df['rmsd'], bins=[0, 2, 2.5, 3, 5], labels=bins))
+    _, _, isBin = TButil.plot_match_bin(df, Path(data['stats']).parent.joinpath('match_count'),
+                                        len(TButil.pds_database()[1]), ['pdb', 'chain'])
+    while not isBin[bin]:
+        binInt = bins.index(bin)
+        if binInt >= len(bins):
+            if TBcore.get_option('system', 'verbose'):
+                sys.stdout.write('No matches found to use for correction.')
+            data['corrections'] = {}
+            return data
+        bin = bins[binInt]
+        data['bin'] = bin
 
     if toreference is None:
         if case.get_type_for_layer(tocorrect) == 'E':
@@ -187,9 +200,13 @@ def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str
     """
     # Report data
     stats = make_mode_stats(df, wdir).reset_index()
-    stats = stats[(stats['layer'] == rlayer)][['measure', 'layer', 'sse', bin]]
+    clms = ['measure', 'layer', 'sse', bin]
+    stats = pd.concat(stats[(stats['layer'] == rlayer) & (stats['measure'].str.startswith('points_'))][clms],
+                      stats[(stats['layer'] == qlayer) & (stats['measure'].str.startswith('angles_'))][clms],
+                      sort=False, ignore_index=True)
     for layer in sorted(df.layer.unique()):
-        TButil.plot_geometric_distributions(df, Path(wdir).joinpath('geometric_distributions_layer{}'.format(layer)))
+        ofile = 'geometric_distributions_layer{}'.format(layer)
+        TButil.plot_geometric_distributions(df[df['layer'] == layer], Path(wdir).joinpath(ofile))
 
     data = {}
     for sse in [x for x in stats.sse.unique() if x.startswith(qlayer)]:
@@ -201,7 +218,7 @@ def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str
             pc = pc * -1
 
         data.setdefault(sse, {}).setdefault('coordinates', {'z': pc})
-        return data
+    return data
 
 
 def first_layer_beta_correction( df: pd.DataFrame, bin: str, wdir: Path ) -> Dict:
@@ -210,7 +227,8 @@ def first_layer_beta_correction( df: pd.DataFrame, bin: str, wdir: Path ) -> Dic
     # Report data
     make_mode_stats(df, wdir)
     for layer in sorted(df.layer.unique()):
-        TButil.plot_geometric_distributions(df, Path(wdir).joinpath('geometric_distributions_layer{}'.format(layer)))
+        ofile = 'geometric_distributions_layer{}'.format(layer)
+        TButil.plot_geometric_distributions(df[df['layer'] == layer], Path(wdir).joinpath(ofile))
 
     # Make network
     def reshape(df):
@@ -261,7 +279,6 @@ def first_layer_beta_correction( df: pd.DataFrame, bin: str, wdir: Path ) -> Dic
             continue
         else:
             data.setdefault(x[0], {}).setdefault('tilt', {}).setdefault('x', float(x[1]))
-    print(data)
     return data
 
 

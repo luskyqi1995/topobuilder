@@ -104,20 +104,23 @@ def plot_match_bin( master_match: pd.DataFrame,
     master_match = master_match.sort_values('rmsd')
     df = master_match.groupby(groupby).head(1) if groupby is not None else master_match
 
-    sns.countplot(x="bin", data=df, ax=ax, order=['close', 'mid', 'far', 'extreme'], palette="Set3")
+    bins = ['close', 'mid', 'far', 'extreme']
+    sns.countplot(x="bin", data=df, ax=ax, order=bins, palette="Set3")
     ax.set_xticklabels(['close\n[0, 2)', 'mid\n[2, 2.5)', 'far\n[2.5, 3)', 'extreme\n[3, 5)'])
     ax.set_ylim(top=expected)
+    match_count = []
     for p in ax.patches:
         pp = int(0 if math.isnan(p.get_height()) else p.get_height())
         ypos = pp + 1000 if pp + 1000 < expected - 500 else pp - 1000
         ax.annotate('{:d}'.format(pp), (p.get_x() + 0.37, ypos))
+        match_count.append(bool(pp))
     plt.tight_layout()
 
     imagename = Path(str(prefix) + TBcore.get_option('system', 'image'))
     if write:
         plugin_imagemaker('MASTER match image summary at {}'.format(imagename))
         plt.savefig(imagename, dpi=300)
-    return fig, imagename
+    return fig, imagename, dict(zip(bins, match_count))
 
 
 def plot_geometric_distributions( df: pd.DataFrame,
