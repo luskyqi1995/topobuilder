@@ -1101,25 +1101,26 @@ def architecture_cast( architecture: Union[str, List, dict] ) -> Union[dict, str
         asciiU = string.ascii_uppercase
         result = {'architecture': []}
 
-        for layer in architecture.split('.'):
-            layer = layer.split(':')
-            m = re.match(expression, layer[0])
-            if not m:
-                raise CaseError('Architecture format not recognized.')
-            result['architecture'].append([])
-            for i in range(int(m.group(1))):
-                name = '{0}{1}{2}'.format(asciiU[len(result['architecture']) - 1],
-                                          i + 1, m.group(2))
-                result['architecture'][-1].append({'type': m.group(2), 'id': name})
-                if len(layer) > 1:
-                    try:
-                        result['architecture'][-1][-1].setdefault('length', int(layer[i + 1]))
-                    except IndexError:
-                        print('Lengths were not provided for all defined secondary structures.')
-                    except ValueError:
-                        print('Length values MUST BE integers.')
-                    except Exception as e:
-                        print(e)
+        for arch in architecture.split(','):
+            for layer in arch.split('.'):
+                layer = layer.split(':')
+                m = re.match(expression, layer[0])
+                if not m:
+                    raise CaseError('Architecture format not recognized.')
+                result['architecture'].append([])
+                for i in range(int(m.group(1))):
+                    name = '{0}{1}{2}'.format(asciiU[len(result['architecture']) - 1],
+                                              i + 1, m.group(2))
+                    result['architecture'][-1].append({'type': m.group(2), 'id': name})
+                    if len(layer) > 1:
+                        try:
+                            result['architecture'][-1][-1].setdefault('length', int(layer[i + 1]))
+                        except IndexError:
+                            print('Lengths were not provided for all defined secondary structures.')
+                        except ValueError:
+                            print('Length values MUST BE integers.')
+                        except Exception as e:
+                            print(e)
 
         schema = TopologySchema()
         return schema.dump(result)
