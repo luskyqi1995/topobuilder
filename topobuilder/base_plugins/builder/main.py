@@ -43,12 +43,10 @@ def case_apply( case: Case,
                 ) -> Case:
     """
     """
-    # Bloc muli-connectivities.
-    if case.connectivity_count > 1:
-        raise ValueError('Only single connectivity cases can be build.')
-
     # Apply connectivity?
     if connectivity:
+        if case.connectivity_count > 1:
+            raise ValueError('Only single connectivity cases can be build.')
         case = case.cast_absolute().apply_topologies()[0]
         ofile = case.connectivities_paths[0].joinpath('directed_sketch.pdb')
     else:
