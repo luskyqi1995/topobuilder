@@ -52,7 +52,10 @@ def checkpoint_in( filename: Union[Path, str] ) -> Optional[Dict]:
         if TBcore.get_option('system', 'verbose'):
             sys.stdout.write('CHECKPOINT: Reloading from {}\n'.format(filename))
         with Path(filename).open() as fd:
-            data = json.load(fd)
+            try:
+                data = json.load(fd)
+            except json.JSONDecodeError:
+                return None
         return data
 
     return None
