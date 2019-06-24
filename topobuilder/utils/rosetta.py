@@ -284,7 +284,20 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     """
     sse = case.secondary_structure
 
+    scorefxns = textwrap.dedent("""\
+        <ScoreFunction name="bb_only" weights="empty.wts" >
+          <Reweight scoretype="fa_rep" weight="0.1" />
+          <Reweight scoretype="fa_atr" weight="0.2" />
+          <Reweight scoretype="hbond_sr_bb" weight="2.0" />
+          <Reweight scoretype="hbond_lr_bb" weight="2.0" />
+          <Reweight scoretype="rama_prepro" weight="0.45" />
+          <Reweight scoretype="omega" weight="0.4" />
+          <Reweight scoretype="p_aa_pp" weight="0.6" />
+        </ScoreFunction>
+    """)
+
     residueselectors = textwrap.dedent("""\
+        <True name="full_pose" />
         <Layer name="surface{suffix}" select_core="0" select_boundary="0" select_surface="1" use_sidechain_neighbors="1"/>
         <Layer name="boundary{suffix}" select_core="0" select_boundary="1" select_surface="0" use_sidechain_neighbors="1"/>
         <Layer name="core{suffix}" select_core="1" select_boundary="0" select_surface="0" use_sidechain_neighbors="1"/>
@@ -294,6 +307,8 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     <PackStat name="pack{suffix}" confidence="0." />
     <CavityVolume name="cav_vol{suffix}" confidence="0." />
     <SecondaryStructure name="sse_match{suffix}" ss="{sse1}" compute_pose_secstruct_by_dssp="true" confidence="0." />
+    <ScorePoseSegmentFromResidueSelectorFilter name="bbscore{suffix}" confidence="0"
+    residue_selector="full_pose" scorefxn="bb_only" />
     """).format(sse1=sse, suffix=suffix)
 
     movers = [textwrap.dedent("""\
@@ -322,5 +337,5 @@ def PROTOCOL_BasicFilters( case: Case, suffix: str = '' ) -> ScriptPieces:
     <Add filter="sse_match{suffix}" />
     """).format(suffix=suffix)
 
-    return ScriptPieces({'residueselectors': [residueselectors, ], 'filters': [filters, ],
+    return ScriptPieces({'scorefxns': [scorefxns, ], 'residueselectors': [residueselectors, ], 'filters': [filters, ],
                          'movers': movers, 'protocols': [protocols, ]})
