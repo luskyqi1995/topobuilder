@@ -89,8 +89,8 @@ def case_apply( case: Case,
 
         reload = TButil.checkpoint_in(checkpoint)
         if reload is not None:
-            case.data['metadata']['imaster'].setdefault('step{:02d}'.format(i + 1), reload)
-            case.data['metadata']['corrections'].append(reload['corrections'])
+            kase.data['metadata']['imaster'].setdefault('step{:02d}'.format(i + 1), reload)
+            kase.data['metadata']['corrections'].append(reload['corrections'])
             corrections.update(reload['corrections'])
             done_l.update(reload['layers'])
             # CKase = CKase.apply_corrections(corrections)
