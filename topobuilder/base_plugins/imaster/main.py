@@ -109,9 +109,9 @@ def case_apply( case: Case,
         TButil.plugin_filemaker('Writing structure {0}'.format(query))
         structure.write(output_file=str(query), format='pdb', clean=True, force=True)
 
-        rules = zip([sse['id'] for sse in CKase.ordered_structures],
-                    [(1 + x, 1 + x + sse['length']) for x, sse in enumerate(CKase.ordered_structures)],
-                    [False, ] * len(sses))
+        rules = list(zip([sse['id'] for sse in CKase.ordered_structures],
+                         [(1 + x, 1 + x + sse['length']) for x, sse in enumerate(CKase.ordered_structures)],
+                         [False, ] * len(sses)))
         print(rules)
 
         # MASTER search
