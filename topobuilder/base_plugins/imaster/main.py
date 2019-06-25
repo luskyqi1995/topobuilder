@@ -12,6 +12,7 @@ from string import ascii_uppercase
 from operator import itemgetter
 from subprocess import run, DEVNULL
 from pathlib import Path
+from itertools import cycle
 import shlex
 import math
 import os
@@ -109,9 +110,14 @@ def case_apply( case: Case,
         TButil.plugin_filemaker('Writing structure {0}'.format(query))
         structure.write(output_file=str(query), format='pdb', clean=True, force=True)
 
+        flip = cycle([CKase['configuration.flip_first'], not CKase['configuration.flip_first']])
+        counts = np.asarray([sse['length'] for sse in CKase.ordered_structures])
+        cends = np.cumsum(counts)
+        cstrs = cends - cends + 1
+
         rules = list(zip([sse['id'] for sse in CKase.ordered_structures],
-                         [(1 + x, 1 + x + sse['length']) for x, sse in enumerate(CKase.ordered_structures)],
-                         [False, ] * len(sses)))
+                         list(zip(cstrs, cends)),
+                         list(next(flip) for _ in range(len(CKase.ordered_structures)))))
         print(rules)
 
         # MASTER search
