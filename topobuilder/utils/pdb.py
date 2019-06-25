@@ -186,15 +186,17 @@ def eigenlayers_fix( eign: np.ndarray, vectors: np.ndarray, scape: bool = False 
 def make_angles_and_distances( pieces: Dict ) -> pd.DataFrame:
     """
     """
-    data = {'sse': [], 'layer': [], 'angles_layer': [], 'angles_floor': [], 'angles_side': [],
-            'points_layer': [], 'points_floor': [], 'points_side': []}
+    data = {'sse': [], 'layer': [],
+            'angles_layer': [], 'angles_floor': [], 'angles_side': [],
+            'points_layer': [], 'points_floor': [], 'points_side': [],
+            'tilted_layer': [], 'tilted_floor': [], 'tilted_side': []}
 
     for layer in sorted(set([x[0] for x in pieces if len(x) == 1])):
         for sse in [x for x in pieces if len(x) == 3]:
             if abs(ascii_uppercase.find(layer) - ascii_uppercase.find(sse[0])) <= 1:
                 data['sse'].append(sse)
                 data['layer'].append(layer)
-                for plane in pieces[layer]:
+                for iplane, plane in enumerate(pieces[layer]):
                     if TBcore.get_option('system', 'debug'):
                         sys.stdout.write('PDB:{} geometry plane {} vs. sse {}\n'.format(plane, layer, sse))
                     syPlane = sy.Plane(sy.Point3D(pieces[layer][plane][0]),
@@ -202,6 +204,25 @@ def make_angles_and_distances( pieces: Dict ) -> pd.DataFrame:
                                        sy.Point3D(pieces[layer][plane][2]))
                     syLine = sy.Line(pieces[sse]['vector'][0], pieces[sse]['vector'][-1])
                     syPoint = sy.Point3D(*pieces[sse]['vector'][1])
-                    data['angles_{}'.format(plane)].append(math.degrees(syPlane.angle_between(syLine)))
-                    data['points_{}'.format(plane)].append(float(syPlane.distance(syPoint)))
+                    data[f'angles_{plane}'].append(math.degrees(syPlane.angle_between(syLine)))
+                    data[f'points_{plane}'].append(float(syPlane.distance(syPoint)))
+                    data[f'tilted_{plane}'].append(math.degrees(syPlane.angle_between(default_plane(iplane))))
     return pd.DataFrame(data)
+
+
+def default_plane( pick: int ) -> sy.Plane:
+    """
+    """
+    x = sy.Point3D([30, 0, 0])
+    y = sy.Point3D([0, 30, 0])
+    z = sy.Point3D([0, 0, 30])
+    c = sy.Point3D([0, 0, 0])
+
+    if pick == 0:
+        return sy.Plane(y, c, x)
+    elif pick == 1:
+        return sy.Plane(x, c, z)
+    elif pick == 2:
+        return sy.Plane(z, c, y)
+    else:
+        raise ValueError('Selection must be between 0 and 2')
