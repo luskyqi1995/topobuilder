@@ -118,8 +118,7 @@ def case_apply( case: Case,
         rules = list(zip([sse['id'] for sse in CKase.ordered_structures],
                          list(zip(cstrs, cends)),
                          list(next(flip) for _ in range(len(CKase.ordered_structures)))))
-        print(rules)
-        print(TButil.pdb_geometry_from_rules(query, rules))
+        extras = TButil.pdb_geometry_from_rules(query, rules)
 
         # MASTER search
         createpds = TButil.createPDS(query)
@@ -127,7 +126,7 @@ def case_apply( case: Case,
         run(createpds, stdout=DEVNULL)
         masters = TButil.master_best_each(query.with_suffix('.pds'), stepfolder.joinpath('_master'), rmsd)
         data = submit_searches(masters, stepfolder, current_case_file, '.'.join([x['id'] for x in sses]))
-        data = calc_corrections(data, kase, set(data['layers']), done_l, bin)
+        data = calc_corrections(data, kase, set(data['layers']), done_l, extras, bin)
 
         kase.data['metadata']['imaster'].setdefault('step{:02d}'.format(i + 1), data)
         TButil.checkpoint_out(checkpoint, data)
@@ -156,7 +155,8 @@ def submit_searches( cmd: List[str], wdir: Path, current_case_file: Path, curren
             'layers': list(set([x[0] for x in current_sse.split('.')]))}
 
 
-def calc_corrections( data: Dict, case: Case, qlayers: Set, dlayers: Set, bin: Optional[str] = 'mid' ) -> Dict:
+def calc_corrections( data: Dict, case: Case, qlayers: Set, dlayers: Set,
+                      extras: pd.DataFrame, bin: Optional[str] = 'mid' ) -> Dict:
     """
     """
     tocorrect = qlayers.difference(dlayers)
@@ -200,35 +200,41 @@ def calc_corrections( data: Dict, case: Case, qlayers: Set, dlayers: Set, bin: O
             data['corrections'] = first_layer_beta_correction(df, bin, Path(data['stats']).parent)
     elif case.get_type_for_layer(toreference) == 'E':
         if case.get_type_for_layer(tocorrect) == 'H':
-            data['corrections'] = alpha_on_beta_correction(df, bin, Path(data['stats']).parent, tocorrect, toreference, case)
+            data['corrections'], data['prefixes'] = alpha_on_beta_correction(df, bin, Path(data['stats']).parent, tocorrect, toreference, case, extras)
 
     if TBcore.get_option('system', 'verbose'):
         sys.stdout.write('Found corrections {}\n'.format(data['corrections']) )
     return data
 
 
-def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str, rlayer: str, case: Case ) -> Dict:
+def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str, rlayer: str,
+                             case: Case, extras: pd.DataFrame ) -> List[Dict]:
     """
     """
     # Report data
     stats = make_mode_stats(df, wdir).reset_index()
     clms = ['measure', 'layer', 'sse', bin]
     stats = stats[(stats['layer'] == rlayer)][clms]
+    extras = extras[(extras['layer'] == rlayer)][clms]
     for layer in sorted(df.layer.unique()):
         ofile = 'geometric_distributions_layer{}'.format(layer)
         TButil.plot_geometric_distributions(df[df['layer'] == layer], Path(wdir).joinpath(ofile))
 
     data = {}
+    preref = {'angles_layer': 0, 'angles_side': 0}
     for sse in [x for x in stats.sse.unique() if x.startswith(qlayer)]:
         ddf = stats[(stats['sse'] == sse)]
-        data.setdefault(sse, {}).setdefault('tilt', {'x': ddf[ddf['measure'] == 'angles_layer'][bin].values[0],
-                                                     'z': ddf[ddf['measure'] == 'angles_side'][bin].values[0]})
+        ddx = extras[(extras['sse'] == sse)]
+        preref['angles_layer'] = -ddx['angles_layer'].values[0]
+        preref['angles_side'] = -ddx['angles_side'].values[0]
+        data.setdefault(sse, {}).setdefault('tilt', {'x': ddf[ddf['measure'] == 'angles_layer'][bin].values[0] + preref['angles_layer'],
+                                                     'z': ddf[ddf['measure'] == 'angles_side'][bin].values[0] + preref['angles_side']})
         pc = ddf[ddf['measure'] == 'points_layer'][bin].values[0] - case['configuration.defaults.distance.ab']
         if ascii_uppercase.index(qlayer) < ascii_uppercase.index(rlayer):
             pc = pc * -1
 
         data.setdefault(sse, {}).setdefault('coordinates', {'z': pc})
-    return data
+    return data, preref
 
 
 def first_layer_beta_correction( df: pd.DataFrame, bin: str, wdir: Path ) -> Dict:
