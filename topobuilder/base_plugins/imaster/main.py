@@ -102,12 +102,18 @@ def case_apply( case: Case,
         with TBcore.on_option_value('system', 'overwrite', True):
             CKase = plugin_source.load_plugin('builder').case_apply(CKase, connectivity=True)
 
-        # Generate structure query
+        # Generate structure query and get layer displacements
         layers = set(itemgetter(*step)(ascii_uppercase))
         sses = [sse for sse in CKase.ordered_structures if sse['id'][0] in layers]
         structure, _ = TButil.build_pdb_object(sses, 3)
         TButil.plugin_filemaker('Writing structure {0}'.format(query))
         structure.write(output_file=str(query), format='pdb', clean=True, force=True)
+
+        rules = zip([sse['id'] for sse in CKase.ordered_structures],
+                    [(1 + x, 1 + x + sse['length']) for x, sse in enumerate(CKase.ordered_structures)],
+                    [False, ] * len(sses))
+        lyrouts = TButil.pdb_geometry_from_rules( structure, rules )
+        print(lyrouts)
 
         # MASTER search
         createpds = TButil.createPDS(query)
