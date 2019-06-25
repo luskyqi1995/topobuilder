@@ -47,7 +47,7 @@ def build_pdb_object( sses: List[Dict], loops: Union[List[int], int] ) -> Tuple[
             sys.stdout.write('PDB: Building SSE {:02d}:{} starting at {}\n'.format(i + 1, sse['id'], start))
         pieces.append(PDB(pd.DataFrame(sse['metadata']['atoms'], columns=columns)).renumber(start))
 
-    structure = pd.concat(pieces)
+    structure = pd.concat(pieces, sort=False, reset_index=True)
     structure['id'] = list(range(1, structure.shape[0] + 1))
     return structure, [int(p.iloc[-1]['auth_seq_id']) for p in pieces]
 
