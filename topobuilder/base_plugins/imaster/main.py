@@ -215,7 +215,7 @@ def alpha_on_beta_correction(df: pd.DataFrame, bin: str, wdir: Path, qlayer: str
     stats = make_mode_stats(df, wdir).reset_index()
     clms = ['measure', 'layer', 'sse', bin]
     stats = stats[(stats['layer'] == rlayer)][clms]
-    extras = extras[(extras['layer'] == rlayer)][clms]
+    extras = extras[(extras['layer'] == rlayer)]
     for layer in sorted(df.layer.unique()):
         ofile = 'geometric_distributions_layer{}'.format(layer)
         TButil.plot_geometric_distributions(df[df['layer'] == layer], Path(wdir).joinpath(ofile))
