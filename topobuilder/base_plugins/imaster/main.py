@@ -113,12 +113,13 @@ def case_apply( case: Case,
         flip = cycle([CKase['configuration.flip_first'], not CKase['configuration.flip_first']])
         counts = np.asarray([sse['length'] for sse in CKase.ordered_structures])
         cends = np.cumsum(counts)
-        cstrs = cends - cends + 1
+        cstrs = cends - counts + 1
 
         rules = list(zip([sse['id'] for sse in CKase.ordered_structures],
                          list(zip(cstrs, cends)),
                          list(next(flip) for _ in range(len(CKase.ordered_structures)))))
         print(rules)
+        print(pdb_geometry_from_rules(structure, rules))
 
         # MASTER search
         createpds = TButil.createPDS(query)
