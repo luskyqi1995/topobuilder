@@ -112,6 +112,7 @@ def case_apply( case: Case,
         rules = zip([sse['id'] for sse in CKase.ordered_structures],
                     [(1 + x, 1 + x + sse['length']) for x, sse in enumerate(CKase.ordered_structures)],
                     [False, ] * len(sses))
+        print(rules)
 
         # MASTER search
         createpds = TButil.createPDS(query)
