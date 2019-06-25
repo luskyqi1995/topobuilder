@@ -188,7 +188,8 @@ def make_angles_and_distances( pieces: Dict ) -> pd.DataFrame:
     """
     data = {'sse': [], 'layer': [],
             'angles_layer': [], 'angles_floor': [], 'angles_side': [],
-            'points_layer': [], 'points_floor': [], 'points_side': []}
+            'points_layer': [], 'points_floor': [], 'points_side': [],
+            'tilted_layer': [], 'tilted_floor': [], 'tilted_side': []}
 
     for layer in sorted(set([x[0] for x in pieces if len(x) == 1])):
         for sse in [x for x in pieces if len(x) == 3]:
@@ -205,6 +206,7 @@ def make_angles_and_distances( pieces: Dict ) -> pd.DataFrame:
                     syPoint = sy.Point3D(*pieces[sse]['vector'][1])
                     data[f'angles_{plane}'].append(math.degrees(syPlane.angle_between(syLine)))
                     data[f'points_{plane}'].append(float(syPlane.distance(syPoint)))
+                    data[f'tilted_{plane}'].append(float(syPlane.distance(default_plane(iplane))))
     return pd.DataFrame(data)
 
 

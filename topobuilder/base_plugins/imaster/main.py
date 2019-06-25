@@ -106,20 +106,18 @@ def case_apply( case: Case,
         # Generate structure query and get layer displacements
         layers = set(itemgetter(*step)(ascii_uppercase))
         sses = [sse for sse in CKase.ordered_structures if sse['id'][0] in layers]
-        structure, _ = TButil.build_pdb_object(sses, 3)
+        structure, cends = TButil.build_pdb_object(sses, 3)
         TButil.plugin_filemaker('Writing structure {0}'.format(query))
         structure.write(output_file=str(query), format='pdb', clean=True, force=True)
 
         flip = cycle([CKase['configuration.flip_first'], not CKase['configuration.flip_first']])
         counts = np.asarray([sse['length'] for sse in CKase.ordered_structures])
-        cends = np.cumsum(counts)
         cstrs = cends - counts + 1
 
         rules = list(zip([sse['id'] for sse in CKase.ordered_structures],
                          list(zip(cstrs, cends)),
                          list(next(flip) for _ in range(len(CKase.ordered_structures)))))
         print(rules)
-        print(structure)
         print(TButil.pdb_geometry_from_rules(structure, rules))
 
         # MASTER search
