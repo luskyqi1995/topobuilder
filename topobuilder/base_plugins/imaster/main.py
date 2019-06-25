@@ -119,6 +119,7 @@ def case_apply( case: Case,
                          list(zip(cstrs, cends)),
                          list(next(flip) for _ in range(len(CKase.ordered_structures)))))
         print(rules)
+        print(structure)
         print(TButil.pdb_geometry_from_rules(structure, rules))
 
         # MASTER search
