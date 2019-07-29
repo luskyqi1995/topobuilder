@@ -296,6 +296,35 @@ def make_mode_stats( df: pd.DataFrame, wdir: Path ) -> pd.DataFrame:
     return stats
 
 
+def load_cath_fam( cath_class, cath_arch, cath_topo ):
+    """
+    Master search only on specific cath topologies.
+    """
+    # Cath check
+    names = [
+        'cath_id',
+        'class',
+        'architecture',
+        'topology',
+        'homology',
+        'seq35_cluster',
+        'seq60_cluster',
+        'seq90_cluster',
+        'seq100_cluster',
+        'seq100_count',
+        'domain_length',
+        'resolution'
+    ]
+    cathdf = pd.read_csv('/scratch/hartevel/work/topobuilder/TopoBuilderData/targets/6E5C/cath-domain-list-S100.txt', sep='\s+', names=names)
+    cathdf['pdb'] = cathdf['cath_id'].str[:4]
+    cathdf['chain'] = cathdf['cath_id'].str[4]
+
+    cathdf = cathdf[(cathdf['class'] == cath_class) & # 2
+                    (cathdf['architecture'] == cath_arch) & # 60
+                        (cathdf['topology'] == cath_topo)] # 120
+    return cathdf
+
+
 def with_slurm( cmd: List[str],
                 current_case_file: Path,
                 current_sse: str,
@@ -313,6 +342,21 @@ def with_slurm( cmd: List[str],
     cwd = Path().cwd()
     os.chdir(str(wwd))
 
+    print(len(cmd))
+    cathdf = load_cath_fam(2, 60, 120)
+    print(cathdf.shape)
+    cmd_clean = []
+    #with open('/scratch/hartevel/work/topobuilder/TopoBuilderData/targets/6E5C/trial_commands.txt', 'w') as f:
+    for i, com in enumerate(cmd):
+        c = os.path.basename(cmd[i][4]).replace('.pds', '').split('_')
+        pdb = c[0]
+        chain = c[1]
+        #print(pdb, chain)
+        #f.write('{}\n'.format(com[4]))
+        if pdb in cathdf['pdb'].tolist() and chain in cathdf['chain'].tolist():
+            cmd_clean.append(cmd[i])
+    cmd = cmd_clean
+    print(len(cmd))
     for i, com in enumerate(cmd):
         cmd[i][2] = str(Path(com[2]).relative_to(wwd))
         cmd[i][-1] = str(Path(com[-1]).relative_to(wwd))
@@ -323,6 +367,8 @@ def with_slurm( cmd: List[str],
         sumfile = unimaster.parent.joinpath('_${SLURM_ARRAY_TASK_ID}.master').relative_to(wwd)
         datfile = unimaster.parent.joinpath('_${SLURM_ARRAY_TASK_ID}.geo').relative_to(wwd)
         bashcont.append('if (( ${{SLURM_ARRAY_TASK_ID}} == {} )); then'.format(j + 1))
+        #cathlist = cath_fam([' '.join(x) for x in cmd[i:i + parts]], 2, 60, 120)
+        #bashcont.extend(cathlist)
         bashcont.extend([' '.join(x) for x in cmd[i:i + parts]])
         bashcont.append('cat {0} > {1}'.format(Path(cmd[-1][-1]).parent.joinpath('*_${SLURM_ARRAY_TASK_ID}'), sumfile))
         bashcont.append(createbash.format(imaster, current_case_file.relative_to(wwd),
