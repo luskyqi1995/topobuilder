@@ -18,7 +18,7 @@ from typing import Dict, Union, Optional
 import numpy as np
 import pandas as pd
 from SBI.structure import PDB, Frame3D
-import SBI.structure.geometry as SBIgeo
+from transforms3d.euler import euler2mat
 from SBI.data import alphabet
 
 # This Library
@@ -80,22 +80,22 @@ class ParametricStructure( object ):
         self.pdb = []
         _MONO = pd.DataFrame(self._MONO).T
         for i, p in enumerate(points):
-            coords = SBIgeo.rotate_degrees(_MONO.values, y=self._ROTATION * i)
-            coords = SBIgeo.translate(coords, p)
+            coords = rotate_degrees(_MONO.values, y=self._ROTATION * i)
+            coords = translate(coords, p)
             self.pdb.append(coords)
         self.pdb = np.vstack(self.pdb)
         # We want undirected structures to start always looking up
-        self.pdb = SBIgeo.rotate_degrees(self.pdb, x=180)
+        self.pdb = rotate_degrees(self.pdb, x=180)
 
         # Apply the case-defined placements for each structure
         if TBcore.get_option('system', 'debug'):
             sys.stdout.write('tilt: ' + str(self.desc['tilt']) + '\n')
             sys.stdout.write('move: ' + str(self.desc['coordinates']) + '\n')
 
-        self.pdb = SBIgeo.rotate_degrees(self.pdb, x=self.desc['tilt']['x'],
+        self.pdb = rotate_degrees(self.pdb, x=self.desc['tilt']['x'],
                                          y=self.desc['tilt']['y'],
                                          z=self.desc['tilt']['z'])
-        self.pdb = SBIgeo.translate(self.pdb, [self.desc['coordinates']['x'],
+        self.pdb = translate(self.pdb, [self.desc['coordinates']['x'],
                                                self.desc['coordinates']['y'],
                                                self.desc['coordinates']['z']])
 
@@ -180,3 +180,96 @@ def weighted_choice(choices):
     x = random() * total
     i = bisect(cum_weights, x)
     return values[i]
+
+def translate( coordinates, vector=None ):
+    """Translate the coordinates according to the provided vector.
+    :param coordinates: Matrix of 3D points.
+    :type coordinates: :class:`~numpy.ndarray`
+    :param vector: 3D vector to apply to the Frame3D.
+    :param vector: :class:`~numpy.ndarray`
+    :return: :class:`~numpy.matrix`
+    :raise:
+        :AttributeError: If vector has the wrong dimensionality.
+    """
+    # If nothing is provided, substitute by the empty vector
+    vector = np.zeros(3, float) if vector is None else vector
+
+    # Check proper dimensionality
+    vector = np.asarray(vector)
+    if len(vector.shape) != 1 and vector.shape[0] != 3:
+        raise AttributeError("The provided vector is not a 3D vector.")
+
+    # We perform the operation only if it is really needed
+    coordinates = np.matrix(coordinates)
+    if not np.allclose(np.zeros(3, float), vector):
+        coordinates += vector
+
+    return coordinates
+
+
+def rotate( coordinates, matrix=None, center=None ):
+    """Rotate the coordinates over a given point.
+    :param coordinates: Matrix of 3D points.
+    :type coordinates: :class:`~numpy.ndarray`
+    :param matrix: 3D matrix (3x3) to apply to coordinates.
+    :param matrix: :class:`~numpy.ndarray`
+    :param center: Point over which rotate.
+        Default is the center of coordinates (``[0., 0., 0.]``).
+    :param center: :class:`~numpy.ndarray`
+    :return: :class:`~numpy.matrix`
+    :raise:
+        :AttributeError: If ``matrix`` does not have the right dimensionality.
+    """
+    # If nothing is provided, substitute by the non-rotating matrix
+    matrix = np.identity(3, float) if matrix is None else np.matrix(matrix)
+    # Check proper dimensionality
+    if len(matrix.shape) != 2 and matrix.shape != (3, 3):
+        raise AttributeError("The provided matrix is not a 3D vector.")
+
+    # We perform the operation only if it is really needed
+    coordinates = np.matrix(coordinates)
+    if np.allclose(np.identity(3, float), matrix):
+        return coordinates
+
+    coordinates = translate(coordinates, center if center is None else -np.asarray(center))
+    coordinates = np.dot(coordinates, matrix)
+    coordinates = translate(coordinates, center)
+
+    return coordinates
+
+
+def rotate_degrees( coordinates, x=0, y=0, z=0, center=None ):
+    """Rotate the coordinates over a given point. In degrees.
+    :param coordinates: Matrix of 3D points.
+    :type coordinates: :class:`~numpy.ndarray`
+    :param float x: Degrees to rotate in the ``x`` axis.
+    :param float y: Degrees to rotate in the ``y`` axis.
+    :param float z: Degrees to rotate in the ``z`` axis.
+    :param center: Point over which rotate.
+        Default is the center of coordinates (``[0., 0., 0.]``).
+    :return: :class:`~numpy.matrix`
+    """
+    if x == 0 and y == 0 and z == 0:
+        return coordinates
+    return rotate_radiants(coordinates, np.radians(x), np.radians(y), np.radians(z), center)
+
+
+def rotate_radiants( coordinates, x=0, y=0, z=0, center=None ):
+    """Rotate the coordinates over a given point. In radiants.
+    :param coordinates: Matrix of 3D points.
+    :type coordinates: :class:`~numpy.ndarray`
+    :param float x: Radiants to rotate in the ``x`` axis.
+    :param float y: Radiants to rotate in the ``y`` axis.
+    :param float z: Radiants to rotate in the ``z`` axis.
+    :param center: Point over which rotate.
+        Default is the center of coordinates (``[0., 0., 0.]``).
+    :return: :class:`~numpy.matrix`
+    """
+    if x == 0 and y == 0 and z == 0:
+        return coordinates
+
+    Rx = euler2mat(x, 0, 0, "sxyz")
+    Ry = euler2mat(0, y, 0, "sxyz")
+    Rz = euler2mat(0, 0, z, "sxyz")
+    R  = np.dot(Rz, np.dot(Rx, Ry))
+    return rotate(coordinates, R, center)
