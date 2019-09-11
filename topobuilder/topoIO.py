@@ -3,6 +3,7 @@
 # @Date:   2016-04-28 13:49:48
 # @Last modified by:   bonet
 # @Last modified time: 03-Sep-2019
+
 import json
 import numpy as np
 
@@ -15,6 +16,7 @@ def load_json(filename):
     if "status" not in data["config"]: data["config"]["status"] = 0
     if "vall" not in data["config"]: raise AttributeError("provide the path to the vall database to create the fragments")
     if "rbin" not in data["config"]: raise AttributeError("provide the path to the rosetta binaries as 'rbin'")
+
     return data
 
 
