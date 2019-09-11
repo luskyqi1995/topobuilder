@@ -15,7 +15,7 @@ Installation
 
 .. code-block:: bash
 
-  pip install https://github.com/lpdi-epfl/topobuilder/archive/v1.0.zip
+  pip install https://github.com/lpdi-epfl/topobuilder/archive/v1.0.1.zip
 
 
 Requirements
@@ -23,8 +23,8 @@ Requirements
 
 To complete a full *TopoBuilder* pipeline you will need:
 
-* The Rosetta_ design suite is needed.
-* The Rosetta tools repo to access the ``make_fragments.pl`` script, and the requirements this script needs.
+* The Rosetta_ design suite.
+* Python>=2.6<3.0
 
 How to Create a Topobuilder Input File
 --------------------------------------
@@ -87,6 +87,7 @@ To simplify, we will try a **4-helix bundle**. For that, we would write a **JSON
     ]
   }
 
+(files to execute this example can be found in the ``demo`` folder).
 
 ``config``, ``layers`` and ``motifs`` are the top, mandatory fields.
 
@@ -214,7 +215,7 @@ To easily visualise the selected topologies and those discarded, one can go insi
 
   python -m SimpleHTTPServer
 
-By default, this will generate a web interface in ``http://0.0.0.0:8000`` that will allow the exploration of all the analysed candidate topologies. Be aware
+By default, this will generate a web interface in ``http://0.0.0.0:8000/combinations.html`` that will allow the exploration of all the analysed candidate topologies. Be aware
 **not to call the web as https but as http**, as most browsers will now default to the secure connection but encryption is not directly supported by direct
 calls to the ``SimpleHTTPServer`` module.
 
