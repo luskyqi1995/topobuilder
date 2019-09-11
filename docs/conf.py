@@ -14,8 +14,6 @@
 #
 import os
 import sys
-import matplotlib as mpl
-mpl.use("Agg")
 sys.path.insert(0, os.path.abspath('..'))
 from topobuilder._version import get_versions
 
