@@ -14,8 +14,13 @@ import math
 from string import ascii_uppercase
 
 # External Libraries
-from SBI.structure import PDB, Frame3D
-import SBI.core as SBIcr
+try:
+    from SBI.structure import PDB, Frame3D
+    import SBI.core as SBIcr
+except ImportError:
+    class Frame3D():
+        pass
+
 import pandas as pd
 import numpy as np
 import sympy as sy
