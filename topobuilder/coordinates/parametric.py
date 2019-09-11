@@ -15,7 +15,11 @@ import numpy as np
 import pandas as pd
 
 # This Library
-from SBI.structure import PDB, ResidueFrame, Frame3D
+try:
+    from SBI.structure import PDB, ResidueFrame, Frame3D
+except ImportError:
+    pass
+
 
 __all__ = ['ParametricStructure']
 
