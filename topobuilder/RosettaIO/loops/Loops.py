@@ -5,9 +5,12 @@
 # @Last Modified time: 2016-04-18 11:11:35
 
 
+
 class Loops(object):
     def __init__(self):
         self.loops = []
+        self.chain = []
+
 
     def add_loop(self, ini, end):
         self.loops.append((ini, end))
