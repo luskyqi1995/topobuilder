@@ -24,8 +24,7 @@ with core.ifndef():
     core.register_option('system', 'overwrite', False, 'bool', 'Overwrite existing structure files.')
     core.register_option('system', 'forced', False, 'bool', 'Ignore checkpoints and redo calculations.')
     core.register_option('system', 'image', '.png', 'string', 'Format to output images', ['.png', '.svg'])
-    core.register_option('system', 'jupyter', 'JPY_PARENT_PID' in os.environ, 'bool',
-                         'Is TopoBuilder run from a notebbok?', locked=True)
+    core.register_option('system', 'jupyter', 'JPY_PARENT_PID' in os.environ, 'bool', 'Is TopoBuilder run from a notebbok?', locked=True)
 
     # For plugins that require SLURM submission
     core.register_option('slurm', 'use', True, 'bool', 'Use SLURM cluster submission system.')

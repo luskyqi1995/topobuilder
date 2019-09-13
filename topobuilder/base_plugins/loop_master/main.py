@@ -25,7 +25,7 @@ import pandas as pd
 from pandas.compat import StringIO
 from SBI.structure import PDB, PDBFrame, ChainFrame
 import SBI.structure.geometry as SBIgeo
-from rstoolbox.io import parse_rosetta_fragments, write_rosetta_fragments
+from rstoolbox.io import parse_rosetta_fragments, write_rosetta_fragments, parse_master_file
 
 # This Library
 from topobuilder.case import Case
@@ -364,7 +364,7 @@ def process_master_data( masfile: Path,
         df['match'] = df['match'].apply(literal_eval)
         return df
 
-    dfloop = TButil.parse_master_file(masfile)
+    dfloop = parse_master_file(masfile)
     dfloop = dfloop.merge(abego, on=['pdb', 'chain']).merge(fragfiles, on=['pdb', 'chain']).dropna()
     dfloop[['abego', 'loop', 'loop_length']] = dfloop.apply(cutter, axis=1, result_type='expand')
     dfloop = dfloop.iloc[:top_loops]

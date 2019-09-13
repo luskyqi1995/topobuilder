@@ -18,7 +18,7 @@ from pathlib import Path
 
 # This Library
 from topobuilder.case import Case, case_template
-from topobuilder import plugin_source
+#from topobuilder import plugin_source
 import topobuilder.utils as TButil
 
 

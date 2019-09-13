@@ -3,12 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to TopoBuilder's documentation!
-=======================================
+TopoBuilder
+===========
+Parametric Building of *de novo* Functional Topologies
+------------------------------------------------------
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   current_plugins
 
 
 
