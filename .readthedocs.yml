@@ -14,3 +14,4 @@ python:
   version: 3.7
   install:
     - requirements: REQUIREMENTS
+    - requirements: ci/requirements_docs.txt

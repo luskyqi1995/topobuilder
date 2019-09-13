@@ -14,6 +14,7 @@ Parametric Building of *de novo* Functional Topologies
    :caption: Contents:
 
    current_plugins
+   new_plugins
 
 
 

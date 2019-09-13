@@ -27,6 +27,8 @@ class Node( abc.ABC ):
 
     This is the base class from which all plugins must derive.
     """
+    REQUIRED_FIELDS = ()
+    RETURNED_FIELDS = ()
 
     def __init__( self, tag: int ):
         super(Node, self).__init__()
