@@ -1,3 +1,4 @@
-sphinx_rtd_theme>=0.4.3
+sphinx_rtd_theme>
 sphinx-autodoc-typehints
-sphinx-argparse>=0.2.2
+sphinx-argparse
+sphinxcontrib-bibtex

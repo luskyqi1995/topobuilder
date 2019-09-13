@@ -17,11 +17,11 @@ from topobuilder.case import Case
 from topobuilder.workflow import Node, NodeOptionsError, NodeDataError
 
 
-__all__ = ['nomenclator']
+__all__ = ['motif_picker']
 
 
-class nomenclator( Node ):
-    """Alters the ``configuration.name`` of a :class:`.Case` by adding subnames.
+class motif_picker( Node ):
+    """Recovers a motif of interest from a protein structure to map upon a :term:`FORM`.
 
     This affects on the creation of the subfolders where the rest of the :class:`.Pipeline`
     will be executed.
@@ -57,7 +57,7 @@ class nomenclator( Node ):
     RETURNED_FIELDS = ()
 
     def __init__( self, tag: int, subnames: Union[List[str], str] ):
-        super(nomenclator, self).__init__(tag)
+        super(motif_picker, self).__init__(tag)
 
         self.subnames = subnames
         # Unify subnames behaviour for 1 to N
