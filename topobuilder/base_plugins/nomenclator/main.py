@@ -44,7 +44,6 @@ class nomenclator( Node ):
         be listed in the class attribute :attr:`.nomenclator.RESERVED_KEYWORDS`. See more on how to
         :ref:`develop your own plugins <make_plugin>`.
 
-    :param tag: Represents the order of this :class:`.Node` in the :class:`.Pipeline`. *Assigned automatically*.
     :param subnames: Subnames that will be added to the :class:`.Case` initial name.
 
     :raises:
