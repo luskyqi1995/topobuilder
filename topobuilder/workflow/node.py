@@ -29,11 +29,12 @@ class Node( abc.ABC ):
     """
     REQUIRED_FIELDS = ()
     RETURNED_FIELDS = ()
+    VERSION = 'v1.0'
 
     def __init__( self, tag: int ):
         super(Node, self).__init__()
-        self.tag = tag
-        self.log = Logger(f'Node => {self.tag:02d} - {type(self).__name__}')
+        self.tag = f'{tag:02d}'
+        self.log = Logger(f'Node => {self.tag} - {type(self).__name__} - {self.VERSION}')
         logger_group.add_logger(self.log)
         logger_level(logger_group)
         self.log.info(f'Starting new work node.')

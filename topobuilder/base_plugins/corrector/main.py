@@ -10,81 +10,98 @@
 from typing import List, Union, Dict, Optional
 from pathlib import Path
 import copy
-import sys
+# import sys
 
 # External Libraries
 
 # This Library
 from topobuilder.case import Case
-import topobuilder.core as TBcore
-import topobuilder.utils as TButil
+from topobuilder.workflow import Node, NodeDataError
+# import topobuilder.core as TBcore
+# import topobuilder.utils as TButil
 
 
-__all__ = ['metadata', 'apply', 'case_apply']
+__all__ = ['corrector']
 
 
-def metadata() -> Dict:
-    """Plugin description.
+class corrector( Node ):
+    """Applies corrections to the placements of the secondary structures in a :term:`FORM`.
 
-    It includes:
+    This affects on the creation of the subfolders where the rest of the :class:`.Pipeline`
+    will be executed.
 
-    - ``name``: The plugin identifier.
-    - ``Itags``: The metadata tags neccessary to execute.
-    - ``Otags``: The metadata tags generated after a successful execution.
-    - ``Isngl``: Funtion on the expected input connectivity.
-    - ``Osngl``: When :data:`True`, output guarantees single connectivity.
+    .. note::
+        On **execution**, the plugin will not append new subnames when those already exist. For example,
+        if ``configuration.name`` is ``1QYS_experiment1_naive`` and ``subnames=['experiment1', 'naive']``,
+        the final ``configuration.name`` will still be ``1QYS_experiment1_naive`` and not
+        ``1QYS_experiment1_naive_experiment1_naive``. This is to avoid folder recursion generation when
+        re-running a previous :class:`.Pipeline`.
+
+    .. caution::
+        There are some keywords that cannot be used as a subname due to them generating their own
+        **first level** subfolders. These keywords are ``architecture``, ``connectivity``, ``images``
+        and ``summary``. Trying to add one of those terms as subname will generate a :class:`.NodeDataError`
+        on **check** time.
+
+    .. admonition:: To Developers
+
+        When developing a new plugin, if it is expected to create new **first level** subfolders, they should
+        be listed in the class attribute :attr:`.nomenclator.RESERVED_KEYWORDS`. See more on how to
+        :ref:`develop your own plugins <make_plugin>`.
+
+    :param subnames: Subnames that will be added to the :class:`.Case` initial name.
+
+    :raises:
+        :NodeOptionsError: On **initialization**. If a reserved key is provided as a subname.
+        :NodeDataError: On **check**. If the required fields to be executed are not there.
+
     """
-    def isngl( count ):
-        return True
+    REQUIRED_FIELDS = ('architecture', )
+    RETURNED_FIELDS = ()
+    VERSION = 'v1.0'
 
-    return {'name': 'nomenclator',
-            'Itags': [],
-            'Otags': [],
-            'Isngl': isngl,
-            'Osngl': False}
+    def __init__( self, tag: int,
+                  corrections: Optional[Union[str, Dict, Path, List[Union[str, Path]]]] = None ):
+        super(corrector, self).__init__(tag)
 
+        # Make sure we have a list of corrections.
+        self.corrections = corrections
+        if self.corrections is not None:
+            if not isinstance(self.corrections, list):
+                self.corrections = [self.corrections, ]
+            for i, c in enumerate(self.corrections):
+                if isinstance(c, str):
+                    self.corrections[i] = Path(c)
+        else:
+            corrections = []
 
-def apply( cases: List[Case],
-           prtid: int,
-           corrections: Optional[Union[str, Dict, Path, List]] = None,
-           **kwargs ) -> List[Case]:
-    """Apply corrections to the Case.
-    """
-    TButil.plugin_title(__file__, len(cases))
+    def single_check( self, dummy: Dict ) -> Dict:
+        kase = Case(dummy)
 
-    for i, case in enumerate(cases):
-        cases[i] = case_apply(case, corrections)
-        cases[i] = cases[i].set_protocol_done(prtid)
-    return cases
+        # Check what it needs
+        for itag in self.REQUIRED_FIELDS:
+            if kase[itag] is None:
+                raise NodeDataError(f'Field "{itag}" is required')
 
+        # Include what keywords it adds (in this instance, nothing)
+        return kase.data
 
-@TButil.plugin_conditions(metadata())
-def case_apply( case: Case,
-                corrections: Optional[Union[str, Dict, Path, List]] = None
-                ) -> Case:
-    """
-    """
-    kase = Case(case)
+    def single_execute( self, data: Dict ) -> Dict:
+        kase = Case(data)
 
-    # Make sure we have a list of corrections.
-    if corrections is None and case['metadata.corrections'] is None:
-        return kase
-    if corrections is not None:
-        if not isinstance(corrections, list):
-            corrections = [corrections, ]
-        for i, c in enumerate(corrections):
-            if isinstance(c, str):
-                corrections[i] = Path(c)
-    else:
-        corrections = []
+        crr = copy.deepcopy(self.corrections)
 
-    crr = copy.deepcopy(corrections)
-    krr = case['metadata.corrections']
-    if krr is not None:
+        # See if there are extra corrections attached to the case itself
+        krr = kase['metadata.corrections']
+        krr = [] if krr is None else krr
         crr.extend(krr)
 
-    for c in crr:
-        if TBcore.get_option('system', 'verbose'):
-            sys.stdout.write('Applying correction: {0}\n'.format(c))
-        kase = kase.apply_corrections(c)
-    return kase
+        # Apply each set of corrections
+        for c in crr:
+            self.log.info('Applying correction: {0}\n'.format(c))
+            kase = kase.apply_corrections(c)
+
+        self.log.debug(f'Applied a total of {len(crr)} corrections.')
+        self.log.debug(f'{len(krr)} from within the Case definition.')
+        self.log.debug(f'{len(self.corrections)} from protocol-provided data.')
+        return kase.data

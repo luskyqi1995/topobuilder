@@ -55,6 +55,7 @@ class nomenclator( Node ):
     RESERVED_KEYWORDS = ['architecture', 'connectivity', 'images', 'summary']
     REQUIRED_FIELDS = ('configuration.name', )
     RETURNED_FIELDS = ()
+    VERSION = 'v1.0'
 
     def __init__( self, tag: int, subnames: Union[List[str], str] ):
         super(nomenclator, self).__init__(tag)

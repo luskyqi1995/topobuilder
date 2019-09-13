@@ -14,6 +14,7 @@ Basic Management and Visualization
 FORM and Parametric
 -------------------
 
+.. autoclass:: topobuilder.base_plugins.corrector.corrector
 .. autoclass:: topobuilder.base_plugins.motif_picker.motif_picker
 
 
