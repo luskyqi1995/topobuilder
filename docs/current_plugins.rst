@@ -5,4 +5,4 @@
 Currently Available Plugins
 ===========================
 
-.. autoclass:: nomenclator.nomenclator
+.. autoclass:: topobuilder.base_plugins.nomenclator.nomenclator
