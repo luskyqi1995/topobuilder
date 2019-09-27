@@ -16,9 +16,9 @@ import json
 # External Libraries
 import yaml
 
-# # This Library
-#from topobuilder import plugin_source
+# This Library
 from topobuilder.case import Case
+from topobuilder.workflow import Pipeline, ProtocolIncompatibilityError, EmptyProtocolError
 
 __all__ = ['protocol']
 
@@ -28,17 +28,16 @@ def protocol( case: Union[str, Path, Dict, Case],
               overwrite: Optional[bool] = False ):
     """
     """
-    c = Case(case)
+    kase = Case(case)
 
-    protocols = c['configuration.protocols']
+    protocols = kase['configuration.protocols']
     if protocols is not None:
         if len(protocols) == 1 and not bool(protocols[0]):
             protocols = None
     if protocols is None and protocol is None:
-        raise AttributeError('There are no protocols to run')
+        raise EmptyProtocolError('There are no protocols to run')
     if protocol is not None and protocols is not None:
-        raise AttributeError('Protocols are provided both through file and in the Case. '
-                             'Pick one.')
+        raise ProtocolIncompatibilityError('Protocols are provided both through file and in the Case. Pick one.')
     if protocol is not None:
         protocol = str(Path(protocol).resolve())
         try:
@@ -48,19 +47,9 @@ def protocol( case: Union[str, Path, Dict, Case],
             protocols = yaml.load(open(protocol))
             case_format = 'yaml'
 
-    # Check requested plugins (avoid time is something is wrong)
-    for i, ptcl in enumerate(protocols):
-        if 'name' not in ptcl:
-            raise ValueError('All protocols require a "name" field')
-        if ptcl['name'] not in plugin_source.list_plugins():
-            raise ValueError('Requested protocol {} cannot be found.'.format(ptcl['name']))
-        protocols[i].setdefault('status', False)
-
-    cases = [c.assign_protocols(protocols), ]
-    for i, ptcl in enumerate(protocols):
-        if not ptcl['status']:
-            cases = plugin_source.load_plugin(ptcl['name']).apply(cases, prtid=i, **ptcl)
-
-    for c in cases:
-        c.write(format=case_format)
+    p = Pipeline(protocols).check(kase.data)
+    cases = p.execute([kase.data, ])
+    for i, c in enumerate(cases):
+        cases[i] = Case(c).assign_protocols(protocols)
+        p.log.notice(f'New case file created at {cases[i].write(format=case_format)}')
     return cases

@@ -17,8 +17,6 @@ import copy
 # This Library
 from topobuilder.case import Case
 from topobuilder.workflow import Node, NodeDataError
-# import topobuilder.core as TBcore
-# import topobuilder.utils as TButil
 
 
 __all__ = ['corrector']
@@ -27,36 +25,28 @@ __all__ = ['corrector']
 class corrector( Node ):
     """Applies corrections to the placements of the secondary structures in a :term:`FORM`.
 
-    This affects on the creation of the subfolders where the rest of the :class:`.Pipeline`
-    will be executed.
-
-    .. note::
-        On **execution**, the plugin will not append new subnames when those already exist. For example,
-        if ``configuration.name`` is ``1QYS_experiment1_naive`` and ``subnames=['experiment1', 'naive']``,
-        the final ``configuration.name`` will still be ``1QYS_experiment1_naive`` and not
-        ``1QYS_experiment1_naive_experiment1_naive``. This is to avoid folder recursion generation when
-        re-running a previous :class:`.Pipeline`.
+    This affects on placement and angles of the different secondary structures. Corrections are defined through
+    a controlled vocabulary.
 
     .. caution::
-        There are some keywords that cannot be used as a subname due to them generating their own
-        **first level** subfolders. These keywords are ``architecture``, ``connectivity``, ``images``
-        and ``summary``. Trying to add one of those terms as subname will generate a :class:`.NodeDataError`
-        on **check** time.
+        Structural motifs imported through the :class:`.Node` :class:`.motif_picker` will impose constraints on
+        the way structures can move with respect to each other, thus making some corrections impossible to
+        fulfill.
 
     .. admonition:: To Developers
 
-        When developing a new plugin, if it is expected to create new **first level** subfolders, they should
-        be listed in the class attribute :attr:`.nomenclator.RESERVED_KEYWORDS`. See more on how to
-        :ref:`develop your own plugins <make_plugin>`.
+        Whenever a plugin has to apply geometric and positional changes to the :term:`FORM`, it should be
+        done through this class.
 
-    :param subnames: Subnames that will be added to the :class:`.Case` initial name.
+    :param corrections: Per secondary structure or per layer corrections to be applied.
 
     :raises:
-        :NodeOptionsError: On **initialization**. If a reserved key is provided as a subname.
         :NodeDataError: On **check**. If the required fields to be executed are not there.
+        :NodeDataError: On **execution**. If the requested corrections do not meet the criteria imposed by the
+            :term:`FORM`.
 
     """
-    REQUIRED_FIELDS = ('architecture', )
+    REQUIRED_FIELDS = ('topology.architecture', )
     RETURNED_FIELDS = ()
     VERSION = 'v1.0'
 

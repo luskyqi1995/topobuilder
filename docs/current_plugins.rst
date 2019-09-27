@@ -9,6 +9,7 @@ Basic Management and Visualization
 ----------------------------------
 
 .. autoclass:: topobuilder.base_plugins.nomenclator.nomenclator
+.. autoclass:: topobuilder.base_plugins.plotter.plotter
 
 
 FORM and Parametric
@@ -20,6 +21,8 @@ FORM and Parametric
 
 Loop Building and Identification
 --------------------------------
+
+.. autoclass:: topobuilder.base_plugins.loop_master.loop_master
 
 
 Protein Backbone

@@ -11,6 +11,10 @@ Glossary
     This compressed definition of the protein space was firstly introduced by Tylor and collaborators :cite:`taylor2002periodic`,
     :cite:`taylor2008prediction`.
 
+  MASTER
+    The *Method of Accelerated Search for Tertiary Ensemble Representatives* takes as query a structural fragment composed of one or more disjoint
+    segments and provably finds all fragments from a database matching the query to within a given RMSD threshold. :cite:`zhou2015rapid`.
+
 
 
 .. bibliography:: references.bib

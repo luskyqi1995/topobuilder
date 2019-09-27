@@ -22,7 +22,7 @@ from .log import logger_group, logger_level, LoggedError
 from .node import Node, NodeOptionsError, NodeMissingError
 from .plugins import TBplugins
 
-__all__ = ['Pipeline']
+__all__ = ['Pipeline', 'ProtocolIncompatibilityError', 'EmptyProtocolError']
 
 
 class Pipeline( object ):
@@ -51,8 +51,9 @@ class Pipeline( object ):
 
         # Load the requested plugins for this pipeline
         self.log.debug(f'Protocol contains a total of {len(self.protocol)} nodes.')
+        self.log.info('Starting protocol initialization.\n\n')
         for i, node in enumerate(self.protocol):
-            print(node)
+            self.log.debug(node)
             # Plugin name not specified
             if 'name' not in node:
                 err = f'All nodes require a "name" field. None is given for node {i + 1}'
@@ -71,35 +72,50 @@ class Pipeline( object ):
             # Load the nodes
             try:
                 node = deepcopy(node)
-                del node['name']
-                del node['tag']
+                nname = node.pop('name', None)
+                node.pop('tag', None)
                 self.nodes.append(this_node(**node, tag=i + 1))
             except TypeError as e:
-                err = str(e).replace('__init__()', node['name']) + '\n'
+                err = str(e).replace('__init__()', nname) + '\n'
                 err += ' ' * 18 + 'Avaiable keywords are: ' + ', '.join(signature(this_node).parameters.keys())
                 raise NodeOptionsError(err)
+        self.log.info('-' * 50)
 
     def check( self, case: Union[Dict, List[Dict]] ) -> List[Dict]:
         """
         """
+        self.log.info('Starting protocol checking.\n\n')
         k = [case, ] if not isinstance(case, list) else case
         for node in self.nodes:
             k = node.check(k)
         self.checked = True
-        return k
+        self.log.info('-' * 50)
+        return self
 
     def execute( self, case: Union[Dict, List[Dict]] ) -> List[Dict]:
         """
         """
+        self.log.info('Starting protocol execution.\n\n')
         if not self.checked:
             raise UncheckedPipelineError('The pipeline has not been checked before starting running')
 
         k = [case, ] if not isinstance(case, list) else case
         for node in self.nodes:
             k = node.execute(k)
+        self.log.info('-' * 50)
         return k
 
 
 class UncheckedPipelineError(LoggedError):
     """Raised when trying to run the pipeline without previously check it.
+    """
+
+
+class ProtocolIncompatibilityError(LoggedError):
+    """Raised when multiple protocol sources are being called simultaneously.
+    """
+
+
+class EmptyProtocolError(LoggedError):
+    """Raised when no protocol data is provided.
     """

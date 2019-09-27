@@ -8,7 +8,7 @@ transforms3d
 bottle
 marshmallow>=3.0
 pyyaml
-pluginbase
+pluginbase==0.7
 rstoolbox
 colorama
 jinja2

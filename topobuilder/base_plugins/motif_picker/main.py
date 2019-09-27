@@ -8,44 +8,62 @@
 """
 # Standard Libraries
 from typing import List, Union, Dict, Optional
-from path import Path
+from pathlib import Path
+from collections import namedtuple
 import re
-import copy
 
 # External Libraries
+import pandas as pd
 
 # This Library
 from topobuilder.case import Case
+from topobuilder.utils import reverse_motif, StructuralError
 from topobuilder.case.schema import _ACCEPTED_SSE_ID_
 from topobuilder.workflow import Node, NodeOptionsError, NodeDataError
 
 
 __all__ = ['motif_picker']
 
+Motif = namedtuple('Motif', ['motifs', 'inner', 'binder'])
+
 
 class motif_picker( Node ):
     """Recovers a motif of interest from a protein structure to map upon a :term:`FORM`.
 
     .. note::
-        On **execution**, the plugin will not append new subnames when those already exist. For example,
-        if ``configuration.name`` is ``1QYS_experiment1_naive`` and ``subnames=['experiment1', 'naive']``,
-        the final ``configuration.name`` will still be ``1QYS_experiment1_naive`` and not
-        ``1QYS_experiment1_naive_experiment1_naive``. This is to avoid folder recursion generation when
-        re-running a previous :class:`.Pipeline`.
-
-    .. caution::
-        There are some keywords that cannot be used as a subname due to them generating their own
-        **first level** subfolders. These keywords are ``architecture``, ``connectivity``, ``images``
-        and ``summary``. Trying to add one of those terms as subname will generate a :class:`.NodeDataError`
-        on **check** time.
+        By adding a motif linking it to one or more secondary structres, several restrictions are added to the system.
+        These may include relative positioning, sequence order and positioning, amongst others.
 
     .. admonition:: To Developers
 
-        When developing a new plugin, if it is expected to create new **first level** subfolders, they should
-        be listed in the class attribute :attr:`.nomenclator.RESERVED_KEYWORDS`. See more on how to
-        :ref:`develop your own plugins <make_plugin>`.
+        A part from adding the ``metadata.motif_picker`` field to the general :class:`.Case`, this :class:`.Node` adds
+        information to the ``metadata`` field of selected secondary structures. Ignoring these metadata in a
+        :class:`.Node` that alters positioning and orientation of the secondary structures will result in broken
+        functional motifs. When applying corrections it should be done through the :class:`.Node` type :class:`.corrector`,
+        in which this restrictions are already taken into account.
 
-    :param source: File name to the PDB file of interest containing the motif.
+    :param source: Path to the PDB file of interest containing the motif.
+    :param selection: Range selection of the motif segments. Position **must be defined as chain and PDB identifier**,
+        that means number and insertion code, if any. Thus, one motif could be selected as ``A:10-25`` when belonging
+         to chain ``A``, while multi-segment motifs are made of selections separated by ``,``.
+    :param hotspot: Selection of a single position that belongs to the exposed part of the interface. This residue is
+        used as a guide to understand the motif's placement. This selection has to follow the same format as selection,
+        but without a range.
+    :param attach: :term:`FORM` name of the secondary structure to which the segments need to be attached.
+        If there is more than one segment, names should be provided in a list.
+    :param shape: The shape of the topology defines the secondary structure types. Thus, a single helix motif
+        will have a shape of ``H``, while an helix-loop-helix would be described as ``HlH`` or a two discontinuous
+        beta motif would be ``ExE``. As a rule, motif segments can be assigned ``H`` or ``E`` and the inbetweens can
+        be either ``l`` if the contiguous secondary structures need to be consecutive and keep the bridging residues
+        or ``x`` if there is no need for that.
+    :param binder: Range selection for the binder. It can be provided as a range same as ``selection`` or as one or a
+        comma-separated list of chain identifiers.
+    :param extend_n: If provided, extend N-terminal of the segment by so many residues. It has to be a list of length
+        identical to the number of segments.
+    :param extend_c: If provided, extend C-terminal of the segment by so many residues. It has to be a list of length
+        identical to the number of segments.
+    :param identifier: Name to give the motif. Otherwise a name is picked related to the position of the :class:`.Node`
+        in the :class:`.Pipeline`.
 
     :raises:
         :NodeOptionsError: On **initialization**. If the provided structure source file does not exist.
@@ -63,12 +81,12 @@ class motif_picker( Node ):
 
     """
     SHAPE_PATTERN = r'^[HE]([lx][HE])*$'
-    REQUIRED_FIELDS = ('architecture', )
+    REQUIRED_FIELDS = ('topology.architecture', )
     RETURNED_FIELDS = ('metadata.motif_picker')
     VERSION = 'v1.0'
 
-    def __init__( self, tag: int, source: Union[Path, str], selection: str,
-                  attach: List[str], shape: Optional[str] = None, binder: Optional[str] = None,
+    def __init__( self, tag: int, source: Union[Path, str], selection: str, hotspot: str,
+                  attach: Union[str, List[str]], shape: str, binder: Optional[str] = None,
                   extend_n: Optional[List[int]] = None, extend_c: Optional[List[int]] = None,
                   identifier: Optional[str] = None ):
         super(motif_picker, self).__init__(tag)
@@ -76,13 +94,14 @@ class motif_picker( Node ):
         self.identifier = identifier if identifier is not None else self.tag
         # Obtaining structure input file
         self.source = source.resolve() if isinstance(source, Path) else Path(source).resolve()
-        if not source.is_file():
+        if not self.source.is_file():
             raise NodeOptionsError(f'Provided structure file {self.source} cannot be found.')
 
         # Check that the number of selection, attach and shape make sense
         self.selection = selection.split(',')
-        self.attach = attach
-        self.shape = shape.split()
+        self.hotspot = hotspot
+        self.attach = attach if isinstance(attach, list) else [attach, ]
+        self.shape = shape
 
         # Each segments belongs to a SSE
         if len(self.selection) != len(self.attach):
@@ -114,13 +133,14 @@ class motif_picker( Node ):
             err = f'Number of segments expected by extend_n ({len(self.extend_n)}) does not match the number '
             err += f'of segments expected by extend_c ({len(self.extend_c)}).'
             raise NodeOptionsError(err)
-        if len(self.extend_n) != len(self.segments):
+        if len(self.extend_n) != len(self.selection):
             err = f'Number of extensions ({len(self.extend_n)}) does not match number of '
-            err += f'requested segments ({len(self.segments)}).'
+            err += f'requested segments ({len(self.selection)}).'
             raise NodeOptionsError(err)
 
         # Chatty
-        self.log.debug(f'Picking a {len(self.segments)}-segment motif from {self.source} of shape {self.shape}.')
+        self.log.debug(f'Picking a {len(self.selection)}-segment motif from {self.source} of shape {self.shape}.')
+        self.log.debug(f'Hotspot residue used to guide orientation is {self.hotspot}.')
         self.log.debug(f'Motif segments are to be assigned to SSE(s) {",".join(self.attach)}.')
         if self.binder is not None:
             self.log.debug(f'A binder on selection {self.binder} has been included.')
@@ -129,7 +149,6 @@ class motif_picker( Node ):
 
     def single_check( self, dummy: Dict ) -> Dict:
         kase = Case(dummy)
-
         # Check what it needs
         for itag in self.REQUIRED_FIELDS:
             if kase[itag] is None:
@@ -148,19 +167,11 @@ class motif_picker( Node ):
         folders.mkdir(parents=True, exist_ok=True)
         result['data_dir'] = str(folders)
 
-        # Check name was not already added.
-        sn = copy.deepcopy(self.subnames)
-        if kase.name.endswith('_'.join(sn)):
-            self.log.notice(f'Seems the subnames {"_".join(sn)} already existed.')
-            self.log.notice('Will NOT re-append.')
-            return kase
-
-        # Add new names
-        oname = kase.name
-        sn.insert(0, oname)
-        kase.data['configuration']['name'] = '_'.join(sn)
-
-        self.log.debug(f'Renamed case {oname} to {kase.name}')
+        # Load Structure and create eigens
+        try:
+            motif = Motif(*reverse_motif(self.log, self.source, self.selection, self.hotspot, self.shape, self.binder))
+        except StructuralError as se:
+            raise NodeDataError(str(se))
 
         # Attach data and return
         kase.data.setdefault('metadata', {}).setdefault('motif_picker', []).append(result)

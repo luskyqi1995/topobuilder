@@ -20,15 +20,11 @@ from tempfile import NamedTemporaryFile
 # External Libraries
 import pandas as pd
 import numpy as np
+from logbook import Logger
 
 # This Library
 import topobuilder.core as TBcore
-from .plugins import plugin_filemaker
-
-__all__ = ['createPDS', 'master_best_each', 'pds_database']
-
-pds_file = None
-pds_list = None
+from topobuilder.workflow import NodeDataError
 
 
 def get_master_exes() -> Tuple[str, str]:
@@ -50,53 +46,51 @@ def get_master_exes() -> Tuple[str, str]:
     return exes
 
 
-def pds_database( force: Optional[bool] = False ) -> Tuple[Path, List]:
-    """Provide the list of available PDS as a file and a list.
-
-    :param force: When :data:`.True`, recheck the PDS database even if one is
-        already assigned.
+def pds_database( log: Logger,
+                  filter: Optional[Union[str, Path]] = None,
+                  ) -> Tuple[Path, List]:
+    """Provide the list of target PDS as a file and a list.
 
     .. note::
-        Depends onf the ``master.pds`` configuration option
+        Depends on the ``master.pds`` configuration option.
+
+    :param log: Job logger.
+    :param filter: File containting the target subset, otherwise all PDS database is considered.
     """
-    global pds_file
-    global pds_list
-
-    if not force:
-        if pds_file is not None and pds_list is not None:
-            return pds_file, pds_list
-
-    pds_file = TBcore.get_option('master', 'pds')
-    pds_list = []
-    pds_file = Path(pds_file)
+    # @TODO: PDS-FILTER
+    pds_file = Path(TBcore.get_option('master', 'pds'))
     if pds_file.is_file():
         pds_list = [line.strip() for line in open(pds_file).readlines() if len(line.strip()) > 0]
-        return pds_file, pds_list
     elif pds_file.is_dir():
         pds_list = [str(x.resolve()) for x in pds_file.glob('*/*.pds')]
-        f = NamedTemporaryFile(mode='w', delete=False)
-        plugin_filemaker('Temporary file for PDS database: {}'.format(f.name))
-        [f.write(x + '\n') for x in pds_list]
-        f.close()
-        pds_file = Path(f.name)
-        return pds_file, pds_list
     else:
-        raise ValueError('The provided MASTER database directory/list file cannot be found.')
+        raise NodeDataError('The provided MASTER database directory/list file cannot be found.')
+
+    # Even if a PDS file already exists, we always create a temporary file so that we can
+    # manage different versions of the PDS database in different Nodes.
+    f = NamedTemporaryFile(mode='w', delete=False)
+    log.info(f'Temporary file for PDS database: {f.name}')
+    [f.write(x + '\n') for x in pds_list]
+    f.close()
+    pds_file = Path(f.name)
+    return pds_file, pds_list
 
 
 def createPDS( infile: Union[Path, str], outfile: Optional[str] = None ) -> List[str]:
     """Make the createPDS command call.
 
     .. note::
-        Depends onf the ``master.create`` configuration option
+        Depends on the ``master.create`` configuration option.
+
+    :param infile: PDB file to convert.
+    :param outfile: Name of the expected PDS output.
     """
     _, createPDS = get_master_exes()
-    createbash = '{0} --type query --pdb {1} --pds {2}'
     infile = Path(infile)
     if not infile.is_file():
-        raise IOError('Unable to find structure file {}'.format(infile))
+        raise NodeDataError(f'Unable to find structure file {infile}')
     outfile = outfile if outfile is not None else infile.with_suffix('.pds')
-    return shlex.split(createbash.format(createPDS, infile, outfile))
+    return shlex.split(f'{createPDS} --type query --pdb {str(infile)} --pds {str(outfile)}')
 
 
 def master_best_each( infile: Union[Path, str],
@@ -106,8 +100,8 @@ def master_best_each( infile: Union[Path, str],
     """Create one MASTER call for each PDS file with the --topN 1 flag.
 
     .. note::
-        Depends onf the ``master.master`` configuration option
-        Depends onf the ``master.pds`` configuration option
+        Depends on the ``master.master`` configuration option
+        Depends on the ``master.pds`` configuration option
     """
     master, _ = get_master_exes()
     _, pds_list = pds_database()
@@ -126,3 +120,25 @@ def master_best_each( infile: Union[Path, str],
         outfile = outdir.joinpath('{}.master'.format(tid))
         cmds.append(shlex.split(createbash.format(master, infile, pds, rmsd, outfile)))
     return cmds
+
+
+def master_fixedgap( query: Path,
+                     pds_list: Path,
+                     master_out: Path,
+                     mdis: int,
+                     Mdis: int,
+                     rmsd_cut: float
+                     ) -> List[List[str]]:
+    """Create the :term:`MASTER` executable for a fixed residue distance between matches.
+
+    :param query: Query PDS file.
+    :param pds_list: File with the database list of PDS targets.
+    :param master_out: Output file with the MASTER results.
+    :param mdis: Minimum distance.
+    :param Mdis: Maximum distance.
+    :param rmsd_cut: RMSD search cutoff.
+    """
+    master, _ = get_master_exes()
+    masterbash = f'{master} --query {str(query)} --targetList {str(pds_list)} --rmsdCut {rmsd_cut} '
+    masterbash += f'--matchOut {str(master_out)} --gapLen {mdis}-{Mdis}'
+    return shlex.split(masterbash)

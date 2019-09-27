@@ -7,20 +7,15 @@
     Bruno Correia <bruno.correia@epfl.ch>
 """
 # Standard Libraries
-import shutil
 
 # External Libraries
-from libconfig import Config
 
 # This Library
+from topobuilder.core import core
 
-core = Config()
+core.open = True  # Open config to add more options.
 with core.ifndef():
-    core.register_option('master', 'master', shutil.which('master'), 'path_in', 'MASTER executable.')
-    core.register_option('master', 'create', shutil.which('createPDS'), 'path_in', 'createPDS executable.')
-    core.register_option('master', 'pds', None, 'path_in', 'Local PDS database.')
-    core.register_option('master', 'pdb', None, 'path_in', 'Local PDB database.')
-    core.register_option('master', 'fragments', None, 'path_in', 'Fragment database of the PDS structures.')
+    core.register_option('loop_master', 'fragments', None, 'path_in', 'Fragment database of the PDS structures.')
     core.register_option('loop_master', 'abego', None, 'path_in', 'FASTA-formated ABEGO assignations.')
 
     # There are different levels of configuration files that can be picked.
